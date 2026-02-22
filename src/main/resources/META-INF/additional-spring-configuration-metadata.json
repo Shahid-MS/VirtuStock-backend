@@ -1,64 +1,67 @@
-{
-  "properties": [
-    {
-      "name": "ipoalerts.api.key",
-      "type": "java.lang.String",
-      "description": "x-api-key of ipo alerts website"
-    },
-    {
-      "name": "ipoalerts.url",
-      "type": "java.lang.String",
-      "description": "ipoalerts url"
-    },
-    {
-      "name": "mailboxlayer.access.key",
-      "type": "java.lang.String",
-      "description": "A description for 'mailboxlayer.access.key'"
-    },
-    {
-      "name": "mailboxlayer.url",
-      "type": "java.lang.String",
-      "description": "A description for 'mailboxlayer.url'"
-    },
-    {
-      "name": "mail.default.cc",
-      "type": "java.lang.String",
-      "description": "A description for 'mail.default.cc'"
-    },
-    {
-      "name": "jwt.secret.key",
-      "type": "java.lang.String",
-      "description": "A description for 'jwt.secret.key'"
-    },
-    {
-      "name": "cloudinary.cloud-name",
-      "type": "java.lang.String",
-      "description": "A description for 'cloudinary.cloud-name'"
-    },
-    {
-      "name": "cloudinary.api-key",
-      "type": "java.lang.String",
-      "description": "A description for 'cloudinary.api-key'"
-    },
-    {
-      "name": "cloudinary.api-secret",
-      "type": "java.lang.String",
-      "description": "A description for 'cloudinary.api-secret'"
-    },
-    {
-      "name": "grid.api.key",
-      "type": "java.lang.String",
-      "description": "A description for 'grid.api.key'"
-    },
-    {
-      "name": "grid.from.mail",
-      "type": "java.lang.String",
-      "description": "A description for 'grid.from.mail'"
-    },
-    {
-      "name": "grid.default.cc",
-      "type": "java.lang.String",
-      "description": "A description for 'grid.default.cc'"
-    }
-  ]
-}
+{"properties": [
+  {
+    "name": "ipoalerts.api.key",
+    "type": "java.lang.String",
+    "description": "x-api-key of ipo alerts website"
+  },
+  {
+    "name": "ipoalerts.url",
+    "type": "java.lang.String",
+    "description": "ipoalerts url"
+  },
+  {
+    "name": "mailboxlayer.access.key",
+    "type": "java.lang.String",
+    "description": "A description for 'mailboxlayer.access.key'"
+  },
+  {
+    "name": "mailboxlayer.url",
+    "type": "java.lang.String",
+    "description": "A description for 'mailboxlayer.url'"
+  },
+  {
+    "name": "mail.default.cc",
+    "type": "java.lang.String",
+    "description": "A description for 'mail.default.cc'"
+  },
+  {
+    "name": "jwt.secret.key",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.secret.key'"
+  },
+  {
+    "name": "cloudinary.cloud-name",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.cloud-name'"
+  },
+  {
+    "name": "cloudinary.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-key'"
+  },
+  {
+    "name": "cloudinary.api-secret",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-secret'"
+  },
+  {
+    "name": "grid.api.key",
+    "type": "java.lang.String",
+    "description": "A description for 'grid.api.key'"
+  },
+  {
+    "name": "grid.from.mail",
+    "type": "java.lang.String",
+    "description": "A description for 'grid.from.mail'"
+  },
+  {
+    "name": "grid.default.cc",
+    "type": "java.lang.String",
+    "description": "A description for 'grid.default.cc'"
+  },
+  {
+    "name": "management.health.db.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'management.health.db.enabled'"
+  }
+]}
