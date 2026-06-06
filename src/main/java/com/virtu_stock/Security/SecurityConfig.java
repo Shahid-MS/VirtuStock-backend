@@ -62,7 +62,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // "http://localhost:5173"
-        configuration.setAllowedOrigins(List.of("https://virtustock.in"));
+        configuration.setAllowedOrigins(List.of("https://virtustock.in", "http://localhost:5173"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "x-otp-verify-token"));
         configuration.setAllowCredentials(true);
