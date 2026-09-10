@@ -8,7 +8,8 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.virtu_stock.User.CustomUserDetailsService;
+import com.virtu_stock.Service.CustomUserDetailsService;
+import com.virtu_stock.Util.JWTUtil;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
