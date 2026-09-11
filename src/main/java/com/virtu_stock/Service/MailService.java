@@ -56,6 +56,10 @@ public class MailService {
     @Value("${mail.default.cc:}")
     private String defaultCC;
 
+    @Value("${mail.from}")
+    private String from;
+
+
     private final JavaMailSender mailSender;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -134,6 +138,7 @@ public class MailService {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
             helper.setTo(to);
+            helper.setFrom(from);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
@@ -159,6 +164,7 @@ public class MailService {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
             helper.setTo(to);
+            helper.setFrom(from);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
