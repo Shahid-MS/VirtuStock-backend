@@ -57,7 +57,7 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
-    @Column(nullable = true, length = 15)
+    @Column(nullable = true, length = 15, unique = true)
     @Pattern(regexp = "^[0-9]{10}$", message = "Phone number must be exactly 10 digits")
     private String phone;
 

@@ -1,6 +1,6 @@
 package com.virtu_stock.Service;
 
-import java.io.IOException;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -14,84 +14,107 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
+
+import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sendgrid.Method;
-import com.sendgrid.Request;
-import com.sendgrid.SendGrid;
-import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-import com.sendgrid.helpers.mail.objects.Email;
-import com.sendgrid.helpers.mail.objects.Personalization;
+
+// import com.sendgrid.Method;
+// import com.sendgrid.Request;
+// import com.sendgrid.SendGrid;
+// import com.sendgrid.helpers.mail.Mail;
+// import com.sendgrid.helpers.mail.objects.Content;
+// import com.sendgrid.helpers.mail.objects.Email;
+// import com.sendgrid.helpers.mail.objects.Personalization;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class MailService {
 
-    @Value("${grid.default.cc}")
-    private String defaultCc;
+    // @Value("${grid.default.cc}")
+    // private String defaultCc;
 
-    @Value("${grid.api.key}")
-    private String gridApiKey;
+    // @Value("${grid.api.key}")
+    // private String gridApiKey;
 
-    @Value("${grid.from.mail}")
-    private String fromMail;
+    // @Value("${grid.from.mail}")
+    // private String fromMail;
+
+    @Value("${mail.default.cc:}")
+    private String defaultCC;
+
+    private final JavaMailSender mailSender;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Async
-    public void sendHtmlMail(String to, String subject, String htmlBody) {
-        Email from = new Email(fromMail, "VirtuStock (No Reply)");
-        Email toEmail = new Email(to);
-        Content content = new Content("text/html", htmlBody);
-        Mail mail = new Mail(from, subject, toEmail, content);
-        SendGrid sendGrid = new SendGrid(gridApiKey);
-        Request request = new Request();
-        try {
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-            sendGrid.api(request);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to send email", e);
-        }
-    }
 
-    @Async
-    public void sendHtmlMailWithCC(String to, String subject, String htmlBody) {
-        Email from = new Email(fromMail);
-        Email toEmail = new Email(to);
-        Content content = new Content("text/html", htmlBody);
-
-        Mail mail = new Mail();
-        mail.setFrom(from);
-        mail.setSubject(subject);
-        mail.addContent(content);
-
-        Personalization personalization = new Personalization();
-        personalization.addTo(toEmail);
-
-        if (defaultCc != null && !defaultCc.isBlank()) {
-            personalization.addCc(new Email(defaultCc));
-        }
-
-        mail.addPersonalization(personalization);
-
-        SendGrid sendGrid = new SendGrid(gridApiKey);
-        Request request = new Request();
-
-        try {
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-            sendGrid.api(request);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to send email", e);
-        }
-    }
+    /*
+     * Send Grid Mail
+     * 
+     * @Async
+     * public void sendHtmlMail(String to, String subject, String htmlBody) {
+     * Email from = new Email(fromMail, "VirtuStock (No Reply)");
+     * Email toEmail = new Email(to);
+     * Content content = new Content("text/html", htmlBody);
+     * Mail mail = new Mail(from, subject, toEmail, content);
+     * SendGrid sendGrid = new SendGrid(gridApiKey);
+     * Request request = new Request();
+     * try {
+     * request.setMethod(Method.POST);
+     * request.setEndpoint("mail/send");
+     * request.setBody(mail.build());
+     * sendGrid.api(request);
+     * } catch (IOException e) {
+     * throw new RuntimeException("Failed to send email", e);
+     * }
+     * }
+     * 
+     * @Async
+     * public void sendHtmlMailWithCC(String to, String subject, String htmlBody) {
+     * Email from = new Email(fromMail);
+     * Email toEmail = new Email(to);
+     * Content content = new Content("text/html", htmlBody);
+     * 
+     * Mail mail = new Mail();
+     * mail.setFrom(from);
+     * mail.setSubject(subject);
+     * mail.addContent(content);
+     * 
+     * Personalization personalization = new Personalization();
+     * personalization.addTo(toEmail);
+     * 
+     * if (defaultCc != null && !defaultCc.isBlank()) {
+     * personalization.addCc(new Email(defaultCc));
+     * }
+     * 
+     * mail.addPersonalization(personalization);
+     * 
+     * SendGrid sendGrid = new SendGrid(gridApiKey);
+     * Request request = new Request();
+     * 
+     * try {
+     * request.setMethod(Method.POST);
+     * request.setEndpoint("mail/send");
+     * request.setBody(mail.build());
+     * sendGrid.api(request);
+     * } catch (IOException e) {
+     * throw new RuntimeException("Failed to send email", e);
+     * }
+     * }
+     */
 
     public boolean hasMXRecord(String email) {
         try {
@@ -103,6 +126,60 @@ public class MailService {
             return attrs != null && attrs.get("MX") != null;
         } catch (NamingException e) {
             return false;
+        }
+    }
+
+    public void sendHtmlMail(String to, String subject, String htmlBody) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
+            mailSender.send(mimeMessage);
+
+        } catch (MailSendException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid email address: " + to);
+        } catch (MailException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Failed to send email to " + to + ". Please try again later.");
+        } catch (MessagingException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Email formatting error.");
+        }
+    }
+
+    public void sendHtmlMailWithCC(String to, String subject, String htmlBody) {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlBody, true);
+            helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
+            if (defaultCC != null && !defaultCC.isBlank()) {
+                String[] ccList = defaultCC.split(",");
+                helper.setCc(ccList);
+            }
+            mailSender.send(mimeMessage);
+
+        } catch (MailSendException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid email address: " + to);
+        } catch (MailException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Failed to send email to " + to + ". Please try again later.");
+        } catch (MessagingException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Email formatting error.");
         }
     }
 
