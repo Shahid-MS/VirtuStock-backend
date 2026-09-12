@@ -11,12 +11,14 @@ import com.virtu_stock.DTO.Response.PageResponseDTO;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Service.IPOService;
 
+
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +29,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class IPOController {
 
     private final IPOService ipoService;
+
+    @Qualifier("modelMapper")
     private final ModelMapper modelMapper;
+    @Qualifier("ipoGMPModelMapper")
+    private final ModelMapper ipoGMPModelMapper;
+    @Qualifier("ipoModelMapper")
+    private final ModelMapper ipoModelMapper;
 
     @GetMapping
     public ResponseEntity<PageResponseDTO<IPOResponseDTO>> findAll(
@@ -42,9 +50,7 @@ public class IPOController {
 
     @GetMapping(params = "status")
     public ResponseEntity<List<IPOResponseDTO>> findByStatus(@RequestParam String status) {
-        List<IPO> ipos = ipoService.findByStatus(status);
-        List<IPOResponseDTO> iposDTO = ipos.stream().map(ipo -> modelMapper.map(ipo, IPOResponseDTO.class)).toList();
-        iposDTO.forEach(IPOResponseDTO::normalizeSubscriptionsOrder);
+        List<IPOResponseDTO> iposDTO = ipoService.findByStatus(status);
         return ResponseEntity.ok(iposDTO);
     }
 
@@ -56,10 +62,18 @@ public class IPOController {
         return ResponseEntity.ok(ipoRes);
     }
 
+    @GetMapping("/{id}/gmp")
+    public ResponseEntity<IPOResponseDTO> findGMPById(@PathVariable UUID id) {
+        IPO ipo = ipoService.findById(id);
+        IPOResponseDTO ipoRes = ipoGMPModelMapper.map(ipo, IPOResponseDTO.class);
+        return ResponseEntity.ok(ipoRes);
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<IPOSearchResponse>> searchQuery(@RequestParam String query) {
         List<IPO> search = ipoService.search(query);
-        List<IPOSearchResponse> searchRes = search.stream().map(ipo -> modelMapper.map(ipo, IPOSearchResponse.class))
+        List<IPOSearchResponse> searchRes = search.stream()
+                .map(ipo -> ipoModelMapper.map(ipo, IPOSearchResponse.class))
                 .toList();
         return ResponseEntity.ok(searchRes);
     }

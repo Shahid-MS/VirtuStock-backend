@@ -4,7 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-src/main/resources/application.properties
+
 src/main/java/com/virtu_stock/Secrets/
 src/main/java/com/virtu_stock/Initialization/
 

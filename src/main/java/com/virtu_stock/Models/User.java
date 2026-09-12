@@ -92,9 +92,6 @@ public class User {
     @Column
     private String profilePicUrl;
 
-    
-    
-
     public String getFullName() {
         return (fullName != null) ? fullName.replace("|", " ") : null;
     }
