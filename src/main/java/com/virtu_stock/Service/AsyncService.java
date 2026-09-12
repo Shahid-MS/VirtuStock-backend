@@ -6,7 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.virtu_stock.DTO.Response.IPOAlertsDTO;
@@ -27,6 +29,9 @@ public class AsyncService {
 
     private final MailService mailService;
 
+    @Value("${mail.admin}")
+    private String adminMail;
+
     @SuppressWarnings("unchecked")
     @Async
     public void fetchIPOInBackground(String status, String type, int limit, String userEmail) {
@@ -36,11 +41,14 @@ public class AsyncService {
         List<IPOAlertsDTO.Exists> exists = new ArrayList<>();
         List<IPOAlertsDTO.Error> errors = new ArrayList<>();
         try {
+
             Map<String, Object> firstResponse = ipoAlertsService.getIPOs(status, type, 1, limit);
+
             Map<String, Object> meta = (Map<String, Object>) firstResponse.get("meta");
             int totalPages = (int) meta.get("totalPages");
 
             for (int page = 1; page <= totalPages; page++) {
+
                 Thread.sleep(15000);
 
                 Map<String, Object> response = ipoAlertsService.getIPOs(status, type, page, limit);
@@ -64,9 +72,11 @@ public class AsyncService {
                     try {
 
                         IPO ipo = ipoHelper.mapToIPO(ipoRes);
-                        IPO savedIpo =ipoRepository.save(ipo);
+                        IPO savedIpo = ipoRepository.save(ipo);
                         saved.add(new IPOAlertsDTO.Saved(savedIpo.getId(), savedIpo.getName(), savedIpo.getType()));
+
                     } catch (Exception e) {
+
                         errors.add(new IPOAlertsDTO.Error(ipoId, ipoName, e.getMessage()));
                     }
                 }
@@ -82,13 +92,23 @@ public class AsyncService {
             summary.put("Exists Ipos", exists);
             summary.put("Skipped Ipos", skipped);
             summary.put("Errors Ipos", errors);
+
             mailService.sendIpoFetchSummaryEmail(userEmail, summary);
+
         } catch (Exception e) {
+
             Map<String, Object> error = new HashMap<>();
             error.put("title", "IPO Fetch Error");
             error.put("message", e.getMessage());
             error.put("details", "Unexpected error during IPO fetch");
+
             mailService.sendAsyncErrorMail(userEmail, error);
+
         }
+    }
+
+    @Scheduled(cron = "0 20 9 * * MON-FRI", zone = "Asia/Kolkata")
+    public void scheduledIPOFetch() {
+        fetchIPOInBackground("open", null, 1, adminMail);
     }
 }

@@ -47,7 +47,7 @@ public class IPO {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "ipo_alert_id")
+    @Column(name = "ipo_alert_id", unique = true)
     private String ipoAlertId;
 
     @NotBlank(message = "Name is required")
