@@ -6,8 +6,8 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
-import com.virtu_stock.IPO.IPO;
-import com.virtu_stock.IPO.IssueSize;
+import com.virtu_stock.Models.IPO;
+import com.virtu_stock.Models.IssueSize;
 
 @Component
 public class IPOHelper {

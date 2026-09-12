@@ -7,7 +7,7 @@ import java.util.Map;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.stereotype.Component;
 
-import com.virtu_stock.Mail.MailService;
+import com.virtu_stock.Service.MailService;
 
 import lombok.RequiredArgsConstructor;
 
