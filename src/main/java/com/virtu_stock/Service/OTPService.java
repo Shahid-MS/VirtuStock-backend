@@ -71,8 +71,8 @@ public class OTPService {
     }
 
     @Transactional
-    // run every 1 hr
-    @Scheduled(fixedRate = 3600000)
+    // run every 6 hr
+    @Scheduled(fixedRate = 21600000)
     public void clearExpiredOtps() {
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
         otpRepository.deleteAllByCreatedAtBefore(cutoff);
