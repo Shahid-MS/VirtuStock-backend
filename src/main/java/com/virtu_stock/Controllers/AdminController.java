@@ -54,6 +54,20 @@ public class AdminController {
                 Map.of("message", "IPO fetch process started. You will receive an email once the task is completed"));
     }
 
+    @PostMapping("/ipo/update")
+    public ResponseEntity<Map<String, Object>> fetchAndUpdateIPO(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer months,
+            @RequestParam(required = false) Integer limit) {
+        String email = AuthUtil.getCurrentUserEmail();
+        
+        asyncService.fetchAndUpdateIPOInBackground(status, type, months, limit, email);
+
+        return ResponseEntity.ok(
+                Map.of("message", "IPO fetch process started. You will receive an email once the task is completed"));
+    }
+
     @PutMapping("/ipo/{id}")
     public ResponseEntity<?> updateIpo(@PathVariable UUID id, @RequestBody IPOUpdateRequestDTO ipoReq) {
         IPOResponseDTO ipo = ipoService.updateIpo(id, ipoReq);

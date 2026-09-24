@@ -50,6 +50,9 @@ public class IPO {
     @Column(name = "ipo_alert_id", unique = true)
     private String ipoAlertId;
 
+    @Column(name = "ipo_gr_slug", unique = true)
+    private String ipoGrSlug;
+
     @NotBlank(message = "Name is required")
     private String name;
 
@@ -161,51 +164,30 @@ public class IPO {
             return IPOStatus.CLOSED;
         }
 
-        if (today.isEqual(listingDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(10, 0))) {
-                return IPOStatus.LISTED;
-            } else {
-                return IPOStatus.LISTING_PENDING;
-            }
+        if (listingDate != null && today.isAfter(listingDate)) {
+            return IPOStatus.LISTED;
         }
 
-        if (today.isAfter(allotmentDate)) {
+        if (listingDate != null && today.isEqual(listingDate)) {
+            return IPOStatus.LISTED;
+        }
+
+        if (allotmentDate != null && today.isAfter(allotmentDate)) {
             return IPOStatus.LISTING_PENDING;
         }
 
-        if (today.isEqual(allotmentDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(17, 0))) {
-                return IPOStatus.LISTING_PENDING;
-            } else {
-                return IPOStatus.ALLOTMENT;
-            }
+        if (allotmentDate != null && today.isEqual(allotmentDate)) {
+            return IPOStatus.ALLOTMENT;
         }
 
         if (today.isAfter(endDate)) {
             return IPOStatus.ALLOTMENT_PENDING;
         }
 
-        if (today.isEqual(endDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(17, 0))) {
-                return IPOStatus.LISTING_PENDING;
-            } else {
-                return IPOStatus.OPEN;
-            }
-        }
-
-        if (today.isAfter(startDate)) {
+        if (today.isEqual(endDate) || today.isAfter(startDate)) {
             return IPOStatus.OPEN;
         }
 
-        if (today.isEqual(startDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(9, 0))) {
-                return IPOStatus.OPEN;
-            }
-        }
         return IPOStatus.UPCOMING;
     }
 

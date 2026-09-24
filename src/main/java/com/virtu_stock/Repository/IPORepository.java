@@ -19,6 +19,8 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
 
     long countByStartDateBetween(LocalDate start, LocalDate end);
 
+    List<IPO> findByIpoGrSlugIn(List<String> ipoGrSlugs);
+
     public List<IPO> findByNameContainingIgnoreCaseOrSymbolContainingIgnoreCaseOrderByName(String name, String symbol);
 
     @Query("""
@@ -29,5 +31,4 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
             """)
     List<Object[]> countIpoByMonthAndYear(@Param("year") int year);
 
-   
 }
