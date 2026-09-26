@@ -45,5 +45,11 @@ public class IPOGr {
     @JsonProperty("issue_size")
     private String issueSize;
 
+    @JsonProperty("is_listed")
+    private Boolean isListed;
+
+    @JsonProperty("listing_price")
+    private String listingPrice;
+
     private IPOGrGMP gmp;
 }

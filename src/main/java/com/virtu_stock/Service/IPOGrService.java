@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.virtu_stock.DTO.Response.IPOGrResponseDTO;
+import com.virtu_stock.DTO.Response.IPOGrSubscriptionResponseDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -54,6 +55,21 @@ public class IPOGrService {
                 HttpMethod.GET,
                 entity,
                 IPOGrResponseDTO.class);
+        return response.getBody();
+    }
+
+    public IPOGrSubscriptionResponseDTO getSubscription(String slug) {
+
+        String url = ipoGrURL + "/ipos/" + slug + "/subscription";
+
+        HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
+
+        ResponseEntity<IPOGrSubscriptionResponseDTO> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                IPOGrSubscriptionResponseDTO.class);
+
         return response.getBody();
     }
 

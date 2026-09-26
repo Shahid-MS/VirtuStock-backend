@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import com.virtu_stock.Models.IPO;
 
 public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificationExecutor<IPO> {
-    public boolean existsByIpoAlertId(String ipoAlertId);
 
     public List<IPO> findAllByOrderByEndDateDesc();
 
@@ -22,6 +21,10 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
     List<IPO> findByIpoGrSlugIn(List<String> ipoGrSlugs);
 
     List<IPO> findByIpoGrSlugIsNull();
+
+    List<IPO> findByIpoAlertIdIn(List<String> ipoAlertIds);
+
+    List<IPO> findByIpoAlertIdIsNull();
 
     public List<IPO> findByNameContainingIgnoreCaseOrSymbolContainingIgnoreCaseOrderByName(String name, String symbol);
 

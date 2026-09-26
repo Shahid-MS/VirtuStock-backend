@@ -67,4 +67,16 @@ public class IPOHelper {
         return ipo;
     }
 
+    public void addSubscription(
+            Map<String, Double> subscriptions,
+            String name,
+            String value) {
+
+        if (value == null || value.isBlank()) {
+            return;
+        }
+
+        subscriptions.put(name, Double.parseDouble(value));
+    }
+
 }
