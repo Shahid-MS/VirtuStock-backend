@@ -1,6 +1,5 @@
 package com.virtu_stock.Service;
 
-import java.sql.Date;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,8 +23,10 @@ import com.virtu_stock.Models.GMP;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Models.IPOGr;
 import com.virtu_stock.Models.IPOGrGMP;
+import com.virtu_stock.Models.IssueSize;
 import com.virtu_stock.Repository.IPORepository;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -119,9 +120,10 @@ public class AsyncService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Async
-    public void fetchAndUpdateIPOInBackground(String status, String type, Integer months, Integer limit, String userEmail) {
+    @Transactional
+    public void fetchAndUpdateIPOInBackground(String status, String type, Integer months, Integer limit,
+            String userEmail) {
         try {
             IPOGrResponseDTO ipoGrResponse = ipoGrService.getIPOs(status, type, months, limit);
 
@@ -136,13 +138,85 @@ public class AsyncService {
                     .toList();
 
             List<IPO> existingIpos = ipoRepository.findByIpoGrSlugIn(slugs);
+            List<IPO> unmatchedIpos = ipoRepository.findByIpoGrSlugIsNull();
 
             Map<String, IPO> existingIpoMap = existingIpos.stream()
                     .collect(Collectors.toMap(IPO::getIpoGrSlug, ipo -> ipo));
 
+            List<IPO> newIpos = new ArrayList<>();
+
             for (IPOGr ipoGr : ipoGrResponse.getData()) {
+
                 try {
                     IPO existingIpo = existingIpoMap.get(ipoGr.getSlug());
+
+                    if (existingIpo == null) {
+                        // Matched IPO but slug null
+                        String firstWord = ipoGr.getName()
+                                .trim()
+                                .split("\\s+")[0];
+
+                        IPO matchedIpo = unmatchedIpos.stream()
+                                .filter(ipo -> ipo.getName() != null)
+                                .filter(ipo -> ipo.getName()
+                                        .toLowerCase()
+                                        .contains(firstWord.toLowerCase()))
+                                .findFirst()
+                                .orElse(null);
+                        if (matchedIpo == null) {
+                            if (ipoGr.getName() == null || ipoGr.getName().isBlank()
+                                    || ipoGr.getType() == null || ipoGr.getType().isBlank()
+                                    || ipoGr.getOpenDate() == null
+                                    || ipoGr.getCloseDate() == null
+                                    || ipoGr.getAllotmentDate() == null
+                                    || ipoGr.getListingDate() == null
+                                    || ipoGr.getPriceMin() == null
+                                    || ipoGr.getPriceMax() == null
+                                    || ipoGr.getLotSize() == null
+                                    || ipoGr.getLogo() == null
+                                    || ipoGr.getLogo().isBlank()) {
+
+                                continue;
+                            }
+
+                            String symbol = ipoGr.getName()
+                                    .trim()
+                                    .split("\\s+")[0]
+                                    .toUpperCase();
+                            IPO newIpo = new IPO();
+
+                            newIpo.setIpoGrSlug(ipoGr.getSlug());
+                            newIpo.setName(ipoGr.getName());
+                            newIpo.setSymbol(symbol);
+                            newIpo.setType(ipoGr.getType());
+
+                            newIpo.setStartDate(ipoGr.getOpenDate());
+                            newIpo.setEndDate(ipoGr.getCloseDate());
+                            newIpo.setAllotmentDate(ipoGr.getAllotmentDate());
+                            newIpo.setListingDate(ipoGr.getListingDate());
+
+                            newIpo.setMinPrice(ipoGr.getPriceMin());
+                            newIpo.setMaxPrice(ipoGr.getPriceMax());
+                            newIpo.setMinQty(ipoGr.getLotSize());
+
+                            newIpo.setLogo(ipoGr.getLogo());
+                            newIpo.setIpoAlertId(null);
+                            newIpo.setGmp(new ArrayList<>());
+
+                            newIpo.setIssueSize(new IssueSize("0", "0", "0"));
+
+                            newIpos.add(newIpo);
+
+                            existingIpoMap.put(ipoGr.getSlug(), newIpo);
+
+                            existingIpo = newIpo;
+                        } else {
+                            matchedIpo.setIpoGrSlug(ipoGr.getSlug());
+                            existingIpoMap.put(ipoGr.getSlug(), matchedIpo);
+                            existingIpo = matchedIpo;
+                        }
+
+                    }
 
                     if (existingIpo != null) {
                         // Update GMP
@@ -154,36 +228,38 @@ public class AsyncService {
                             continue;
                         }
 
-                        GMP latestGmp = existingIpo.getGmp().isEmpty()
-                                ? null
-                                : existingIpo.getGmp().get(0);
                         Instant updatedAt = ipoGrGMP.getUpdatedAt();
                         LocalDate ipoGrDate = updatedAt
                                 .atZone(ZoneId.of("Asia/Kolkata"))
                                 .toLocalDate();
+                        GMP latestGmp = existingIpo.getGmp().stream()
+                                .filter(gmp -> gmp.getGmpDate().equals(ipoGrDate))
+                                .findFirst()
+                                .orElse(null);
                         double ipoGrPrice = Double.parseDouble(ipoGrGMP.getPrice());
 
-                        if (latestGmp != null && latestGmp.getGmpDate().equals(ipoGrDate)
-                                && latestGmp.getGmp() == ipoGrPrice) {
+                        if (latestGmp != null && latestGmp.getGmpDate().equals(ipoGrDate)) {
+                            if (latestGmp.getGmp() != ipoGrPrice)
+                                latestGmp.setGmp(ipoGrPrice);
                             latestGmp.setLastUpdated(
                                     updatedAt.atZone(ZoneId.of("Asia/Kolkata"))
                                             .toLocalDateTime());
                         } else {
                             GMP newGMP = new GMP();
-                            newGMP.setGmp(Double.parseDouble(ipoGrGMP.getPrice()));
+                            newGMP.setGmp(ipoGrPrice);
                             newGMP.setGmpDate(updatedAt.atZone(ZoneId.of("Asia/Kolkata")).toLocalDate());
                             newGMP.setLastUpdated(updatedAt.atZone(ZoneId.of("Asia/Kolkata")).toLocalDateTime());
                             existingIpo.getGmp().add(newGMP);
                         }
-                    }
-                    else{
-                        
                     }
                 } catch (Exception e) {
                     System.out.println(e);
                 }
             }
 
+            if (!newIpos.isEmpty()) {
+                ipoRepository.saveAll(newIpos);
+            }
             // for (int page = 1; page <= totalPages; page++) {
 
             // Thread.sleep(15000);

@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -55,7 +54,6 @@ public class IPOGrService {
                 HttpMethod.GET,
                 entity,
                 IPOGrResponseDTO.class);
-        System.out.println(response);
         return response.getBody();
     }
 

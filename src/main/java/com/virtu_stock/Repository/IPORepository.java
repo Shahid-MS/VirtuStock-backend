@@ -21,6 +21,8 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
 
     List<IPO> findByIpoGrSlugIn(List<String> ipoGrSlugs);
 
+    List<IPO> findByIpoGrSlugIsNull();
+
     public List<IPO> findByNameContainingIgnoreCaseOrSymbolContainingIgnoreCaseOrderByName(String name, String symbol);
 
     @Query("""
