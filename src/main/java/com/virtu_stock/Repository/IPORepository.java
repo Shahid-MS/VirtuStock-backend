@@ -44,4 +44,15 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
             """)
     List<IPO> findIposUpdatedSince(@Param("fromDate") LocalDateTime fromDate);
 
+    @Query("""
+                SELECT i
+                FROM IPO i
+                WHERE i.ipoGrSlug IS NOT NULL
+                  AND i.startDate IS NOT NULL
+                  AND i.endDate IS NOT NULL
+                  AND i.startDate <= :today
+                  AND i.endDate >= :today
+            """)
+    List<IPO> findOpenIposForSubscription(LocalDate today);
+
 }

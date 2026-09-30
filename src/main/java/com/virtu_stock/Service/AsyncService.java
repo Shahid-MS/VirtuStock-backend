@@ -183,8 +183,17 @@ public class AsyncService {
                 ipoRepository.saveAll(updateIpos);
             }
 
+        } catch (Exception e) {
+
+            Map<String, Object> error = new HashMap<>();
+            error.put("title", "IPO Fetch Error");
+            error.put("message", e.getMessage());
+            error.put("details", "Unexpected error during IPO fetch");
+            mailService.sendAsyncErrorMail(userEmail, error);
+
+        } finally {
             Map<String, Object> summary = new LinkedHashMap<>();
-            summary.put("Total", totalPages);
+            summary.put("Total", saved.size() + exists.size() + skipped.size() + errors.size());
             summary.put("Total Saved", saved.size());
             summary.put("Total Exists", exists.size());
             summary.put("Total Skipped", skipped.size());
@@ -195,15 +204,6 @@ public class AsyncService {
             summary.put("Errors Ipos", errors);
 
             mailService.sendIpoFetchSummaryEmail(userEmail, summary);
-
-        } catch (Exception e) {
-
-            Map<String, Object> error = new HashMap<>();
-            error.put("title", "IPO Fetch Error");
-            error.put("message", e.getMessage());
-            error.put("details", "Unexpected error during IPO fetch");
-            mailService.sendAsyncErrorMail(userEmail, error);
-
         }
     }
 
@@ -261,6 +261,155 @@ public class AsyncService {
         } catch (Exception e) {
             System.out.println(e);
         }
+    }
+
+    @Async
+    public void fetchAndUpdateSubscriptionInBackground(String email) {
+        IPOGrFetchResult ipoGrFetchResult = new IPOGrFetchResult();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        List<IPO> openIpos = ipoRepository.findOpenIposForSubscription(today);
+        if (openIpos.isEmpty()) {
+            ipoGrFetchResult.getErrors().add(new IPOGrDTO.Error(null, "No open ipos", "No open ipos in Db"));
+            summaryMail(ipoGrFetchResult, email);
+            return;
+        }
+
+        List<IPO> updateIpos = new ArrayList<>();
+
+        for (int index = 0; index < openIpos.size(); index++) {
+
+            IPO currentIpo = openIpos.get(index);
+
+            try {
+
+                IPOGrSubscriptionResponseDTO response = ipoGrService.getSubscription(
+                        currentIpo.getIpoGrSlug());
+
+                if (response == null
+                        || response.getData() == null
+                        || response.getData().getSummary() == null) {
+
+                    ipoGrFetchResult.getErrors().add(
+                            new IPOGrDTO.Error(
+                                    currentIpo.getId().toString(),
+                                    currentIpo.getName(),
+                                    "Subscription Data Not Available"));
+
+                } else {
+
+                    IPOGrSubscriptionSummary summary = response.getData().getSummary();
+
+                    if (summary.getUpdatedAt() == null) {
+
+                        ipoGrFetchResult.getErrors().add(
+                                new IPOGrDTO.Error(
+                                        currentIpo.getId().toString(),
+                                        currentIpo.getName(),
+                                        "Subscription Updated at Not Available"));
+
+                    } else {
+
+                        LocalDateTime newUpdatedAt = summary.getUpdatedAt()
+                                .atZone(ZoneId.of("Asia/Kolkata"))
+                                .toLocalDateTime();
+
+                        if (!Objects.equals(
+                                currentIpo.getSubscriptionLastUpdated(),
+                                newUpdatedAt)) {
+
+                            Map<String, Double> subscriptions = new LinkedHashMap<>();
+
+                            ipoHelper.addSubscription(
+                                    subscriptions,
+                                    "QIB",
+                                    summary.getQib());
+
+                            ipoHelper.addSubscription(
+                                    subscriptions,
+                                    "Non-Institutional",
+                                    summary.getNii());
+
+                            ipoHelper.addSubscription(
+                                    subscriptions,
+                                    "Retailer",
+                                    summary.getRetail());
+
+                            if (summary.getEmployee() != null
+                                    && !summary.getEmployee().isBlank()
+                                    && Double.parseDouble(summary.getEmployee()) != 0) {
+
+                                ipoHelper.addSubscription(
+                                        subscriptions,
+                                        "Employee",
+                                        summary.getEmployee());
+                            }
+
+                            if (summary.getShareholder() != null
+                                    && !summary.getShareholder().isBlank()
+                                    && Double.parseDouble(summary.getShareholder()) != 0) {
+
+                                ipoHelper.addSubscription(
+                                        subscriptions,
+                                        "Shareholder",
+                                        summary.getShareholder());
+                            }
+
+                            if (summary.getAnchor() != null
+                                    && !summary.getAnchor().isBlank()
+                                    && Double.parseDouble(summary.getAnchor()) != 0) {
+
+                                ipoHelper.addSubscription(
+                                        subscriptions,
+                                        "Anchor",
+                                        summary.getAnchor());
+                            }
+
+                            ipoHelper.addSubscription(
+                                    subscriptions,
+                                    "Total",
+                                    summary.getTotal());
+
+                            currentIpo.setSubscriptions(subscriptions);
+                            currentIpo.setSubscriptionLastUpdated(newUpdatedAt);
+
+                            updateIpos.add(currentIpo);
+
+                            ipoGrFetchResult.getExists().add(
+                                    new IPOGrDTO.Exists(
+                                            currentIpo.getId().toString(),
+                                            currentIpo.getName()
+                                                    + " (subscription updated)"));
+                        }
+                    }
+                }
+
+            } catch (Exception e) {
+
+                ipoGrFetchResult.getErrors().add(
+                        new IPOGrDTO.Error(
+                                currentIpo.getId().toString(),
+                                currentIpo.getName(),
+                                "Subscription Exception: " + e.getMessage()));
+
+            } finally {
+
+                if (index < openIpos.size() - 1) {
+                    try {
+                        Thread.sleep(10000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!updateIpos.isEmpty()) {
+            ipoRepository.saveAll(updateIpos);
+        }
+
+        summaryMail(ipoGrFetchResult, email);
+
     }
 
     private void addOrUpdateIPOs(
@@ -650,4 +799,9 @@ public class AsyncService {
         fetchAndUpdateIPOInBackground(null, null, 1, null, adminMail);
     }
 
+    @Scheduled(cron = "0 5 8,11,16,18,23 * * MON-FRI", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 35 9,12,14,17 * * MON-FRI", zone = "Asia/Kolkata")
+    public void scheduledSubscriptionUpdate() {
+        fetchAndUpdateSubscriptionInBackground(adminMail);
+    }
 }
