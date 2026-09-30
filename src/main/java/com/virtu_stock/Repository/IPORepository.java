@@ -1,7 +1,9 @@
 package com.virtu_stock.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -18,7 +20,7 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
 
     long countByStartDateBetween(LocalDate start, LocalDate end);
 
-    List<IPO> findByIpoGrSlugIn(List<String> ipoGrSlugs);
+    List<IPO> findByIpoGrSlugIn(Set<String> ipoGrSlugs);
 
     List<IPO> findByIpoGrSlugIsNull();
 
@@ -35,5 +37,11 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
                 GROUP BY MONTH(i.startDate)
             """)
     List<Object[]> countIpoByMonthAndYear(@Param("year") int year);
+
+    @Query("""
+                SELECT i FROM IPO i
+                WHERE i.subscriptionLastUpdated >= :fromDate
+            """)
+    List<IPO> findIposUpdatedSince(@Param("fromDate") LocalDateTime fromDate);
 
 }

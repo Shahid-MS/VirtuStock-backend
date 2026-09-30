@@ -61,7 +61,6 @@ public class AdminController {
             @RequestParam(required = false) Integer months,
             @RequestParam(required = false) Integer limit) {
         String email = AuthUtil.getCurrentUserEmail();
-        
         asyncService.fetchAndUpdateIPOInBackground(status, type, months, limit, email);
 
         return ResponseEntity.ok(

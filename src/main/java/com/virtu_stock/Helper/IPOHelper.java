@@ -3,6 +3,7 @@ package com.virtu_stock.Helper;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 
@@ -77,6 +78,43 @@ public class IPOHelper {
         }
 
         subscriptions.put(name, Double.parseDouble(value));
+    }
+
+    public boolean isMatchingIPO(IPO ipo1, IPO ipo2) {
+
+        if (!Objects.equals(ipo1.getType(), ipo2.getType())) {
+            return false;
+        }
+
+        int score = 0;
+
+        String name1 = ipo1.getName().trim().toLowerCase();
+        String name2 = ipo2.getName().trim().toLowerCase();
+
+        String firstWord1 = name1.split("\\s+")[0];
+        String firstWord2 = name2.split("\\s+")[0];
+
+        if (name1.startsWith(firstWord2) || name2.startsWith(firstWord1)) {
+            score += 40;
+        }
+
+        if (Objects.equals(ipo1.getStartDate(), ipo2.getStartDate())) {
+            score += 30;
+        }
+
+        if (Objects.equals(ipo1.getEndDate(), ipo2.getEndDate())) {
+            score += 15;
+        }
+
+        if (Objects.equals(ipo1.getMinPrice(), ipo2.getMinPrice())) {
+            score += 7;
+        }
+
+        if (Objects.equals(ipo1.getMaxPrice(), ipo2.getMaxPrice())) {
+            score += 8;
+        }
+
+        return score >= 70;
     }
 
 }

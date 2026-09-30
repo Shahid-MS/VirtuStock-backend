@@ -29,8 +29,8 @@ public class IPOAlertsService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        // headers.set("x-api-key", apiKey);
-        // headers.set("Content-Type", "application/json");
+        headers.set("x-api-key", apiKey);
+        headers.set("Content-Type", "application/json");
         return headers;
     }
 

@@ -1,6 +1,5 @@
 package com.virtu_stock.Service;
 
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -24,7 +23,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -59,11 +57,9 @@ public class MailService {
     @Value("${mail.from}")
     private String from;
 
-
     private final JavaMailSender mailSender;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
 
     /*
      * Send Grid Mail
@@ -172,6 +168,7 @@ public class MailService {
                 String[] ccList = defaultCC.split(",");
                 helper.setCc(ccList);
             }
+
             mailSender.send(mimeMessage);
 
         } catch (MailSendException e) {
@@ -280,6 +277,7 @@ public class MailService {
     }
 
     public void sendIpoFetchSummaryEmail(String to, Map<String, Object> res) {
+
         String subject = "📊 IPO Fetch Summary Report - VirtuStock";
         StringBuilder sb = new StringBuilder();
         sb.append(
