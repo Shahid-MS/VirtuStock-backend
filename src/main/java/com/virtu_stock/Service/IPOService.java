@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.virtu_stock.Configurations.AppConstants;
@@ -23,6 +24,7 @@ import com.virtu_stock.DTO.Request.IPOUpdateRequestDTO;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.PageResponseDTO;
 import com.virtu_stock.Enum.IPOStatus;
+import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Exceptions.CustomExceptions.BadRequestException;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidPaginationParameterException;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidSortFieldException;
@@ -30,9 +32,10 @@ import com.virtu_stock.Exceptions.CustomExceptions.ResourceNotFoundException;
 import com.virtu_stock.Models.GMP;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Projection.LatestGMPProjection;
-import com.virtu_stock.Projection.RetailSubscriptionProjection;
+import com.virtu_stock.Projection.SubscriptionProjection;
 import com.virtu_stock.Repository.IPOProfileRepository;
 import com.virtu_stock.Repository.IPORepository;
+import com.virtu_stock.Specification.IPOSpecification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -48,7 +51,16 @@ public class IPOService {
     @Qualifier("ipoModelMapper")
     private final ModelMapper ipoModelMapper;
 
-    public PageResponseDTO<IPOResponseDTO> findAll(int pageNumber, int pageSize, String sortBy, String sortDir) {
+    public PageResponseDTO<IPOResponseDTO> findAll(
+            int pageNumber,
+            int pageSize,
+            String sortBy,
+            String sortDir,
+            String status,
+            Verdict verdict,
+            String type,
+            String search) {
+
         if (pageNumber < 0 || pageSize <= 0) {
             throw new InvalidPaginationParameterException(
                     "Page number and size must be positive");
@@ -65,19 +77,86 @@ public class IPOService {
             throw new InvalidSortFieldException(
                     "Invalid sort field. Allowed values: " + allowedSortFields);
         }
-        Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+
+        Sort sort = sortDir.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
 
         Pageable pageable = PageRequest.of(pageNumber, pageSize, sort);
 
-        Page<IPO> pageDetails = ipoRepository.findAll(pageable);
+        Specification<IPO> specification = null;
 
-        List<IPO> ipos = pageDetails.getContent();
+        if (status != null && !status.isBlank()) {
+            specification = IPOSpecification.hasStatus(status);
+        }
 
-        // Fetch latest GMP
+        if (verdict != null) {
+            specification = specification == null
+                    ? IPOSpecification.hasVerdict(verdict)
+                    : specification.and(IPOSpecification.hasVerdict(verdict));
+        }
+
+        if (type != null && !type.isBlank()) {
+            specification = specification == null
+                    ? IPOSpecification.hasType(type)
+                    : specification.and(IPOSpecification.hasType(type));
+        }
+
+        if (search != null && !search.isBlank()) {
+            specification = specification == null
+                    ? IPOSpecification.search(search)
+                    : specification.and(IPOSpecification.search(search));
+        }
+
+        Page<IPO> pageDetails = specification != null
+                ? ipoRepository.findAll(specification, pageable)
+                : ipoRepository.findAll(pageable);
+
+        List<IPOResponseDTO> iposDTO = enrichIPOResponses(pageDetails.getContent());
+
+        PageResponseDTO<IPOResponseDTO> response = new PageResponseDTO<>();
+
+        response.setContent(iposDTO);
+        response.setPageNumber(pageDetails.getNumber());
+        response.setPageSize(pageDetails.getSize());
+        response.setTotalPageElements(pageDetails.getNumberOfElements());
+        response.setTotalPages(pageDetails.getTotalPages());
+        response.setTotalElements(pageDetails.getTotalElements());
+        response.setLastPage(pageDetails.isLast());
+
+        return response;
+    }
+
+    public List<IPOResponseDTO> findByStatus(String status) {
+
+        IPOStatus ipoStatus;
+
+        try {
+            ipoStatus = IPOStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid IPO status: " + status);
+        }
+
+        Specification<IPO> specification = IPOSpecification.hasStatus(ipoStatus.name());
+
+        List<IPO> ipos = ipoRepository.findAll(specification);
+
+        return enrichIPOResponses(ipos);
+    }
+
+    private List<IPOResponseDTO> enrichIPOResponses(List<IPO> ipos) {
+
+        if (ipos == null || ipos.isEmpty()) {
+            return List.of();
+        }
+
         List<UUID> ipoIds = ipos.stream()
                 .map(IPO::getId)
                 .toList();
+
+        // Fetch latest GMP for all IPOs in one query
         List<LatestGMPProjection> latestGmps = ipoProfileRepository.findLatestGmp(ipoIds);
+
         Map<UUID, GMP> latestGmpMap = latestGmps.stream()
                 .collect(Collectors.toMap(
                         gmp -> UUID.fromString(gmp.getIpoId()),
@@ -87,19 +166,21 @@ public class IPOService {
                                 .lastUpdated(gmp.getLastUpdated())
                                 .build()));
 
-        // Find Retailer Subscription
-        List<RetailSubscriptionProjection> retailSubscriptions = ipoProfileRepository.findRetailSubscription(ipoIds);
-        Map<UUID, Double> retailSubscriptionMap = retailSubscriptions.stream()
+        // Fetch subscriptions for all IPOs in one query
+        List<SubscriptionProjection> subscriptions = ipoProfileRepository.findSubscription(ipoIds);
+
+        Map<UUID, SubscriptionProjection> subscriptionMap = subscriptions.stream()
                 .collect(Collectors.toMap(
                         sub -> UUID.fromString(sub.getIpoId()),
-                        RetailSubscriptionProjection::getSubscriptionValue));
+                        sub -> sub));
 
-        // Create DTO
+        // Map IPO + GMP + Subscription
         List<IPOResponseDTO> iposDTO = ipos.stream()
                 .map(ipo -> {
 
                     IPOResponseDTO dto = ipoModelMapper.map(ipo, IPOResponseDTO.class);
 
+                    // Latest GMP
                     GMP latestGmp = latestGmpMap.get(ipo.getId());
 
                     dto.setGmp(
@@ -107,10 +188,34 @@ public class IPOService {
                                     ? List.of(latestGmp)
                                     : List.of());
 
-                    Double retailSubs = retailSubscriptionMap.get(ipo.getId());
+                    // Subscription
+                    SubscriptionProjection subs = subscriptionMap.get(ipo.getId());
+
                     LinkedHashMap<String, Double> subscription = new LinkedHashMap<>();
 
-                    subscription.put("Retail", retailSubs != null ? retailSubs : 0);
+                    subscription.put(
+                            "QIB",
+                            subs != null && subs.getQib() != null
+                                    ? subs.getQib()
+                                    : 0.0);
+
+                    subscription.put(
+                            "Non-Institutional",
+                            subs != null && subs.getNonInstitutional() != null
+                                    ? subs.getNonInstitutional()
+                                    : 0.0);
+
+                    subscription.put(
+                            "Retailer",
+                            subs != null && subs.getRetailer() != null
+                                    ? subs.getRetailer()
+                                    : 0.0);
+
+                    subscription.put(
+                            "Total",
+                            subs != null && subs.getTotal() != null
+                                    ? subs.getTotal()
+                                    : 0.0);
 
                     dto.setSubscriptions(subscription);
 
@@ -120,31 +225,7 @@ public class IPOService {
 
         iposDTO.forEach(IPOResponseDTO::normalizeSubscriptionsOrder);
 
-        // Response
-        PageResponseDTO<IPOResponseDTO> ipoPageResponseDTO = new PageResponseDTO<IPOResponseDTO>();
-        ipoPageResponseDTO.setContent(iposDTO);
-        ipoPageResponseDTO.setPageNumber(pageDetails.getNumber());
-        ipoPageResponseDTO.setPageSize(pageDetails.getSize());
-        ipoPageResponseDTO.setTotalPageElements(pageDetails.getNumberOfElements());
-        ipoPageResponseDTO.setTotalPages(pageDetails.getTotalPages());
-        ipoPageResponseDTO.setTotalElements(pageDetails.getTotalElements());
-        ipoPageResponseDTO.setLastPage(pageDetails.isLast());
-        return ipoPageResponseDTO;
-    }
-
-    public List<IPOResponseDTO> findByStatus(String status) {
-        IPOStatus ipoStatus;
-        try {
-            ipoStatus = IPOStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid IPO status: " + status);
-        }
-
-        return ipoRepository.findAll()
-                .stream()
-                .filter(ipo -> ipo.getStatus() == ipoStatus)
-                .map(ipo -> ipoModelMapper.map(ipo, IPOResponseDTO.class))
-                .toList();
+        return iposDTO;
     }
 
     public IPO findById(UUID id) {

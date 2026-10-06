@@ -2,6 +2,7 @@ package com.virtu_stock.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Hashtable;
 
 import java.util.List;
@@ -133,58 +134,208 @@ public class MailService {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+
             helper.setTo(to);
             helper.setFrom(from);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
-            helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
+
+            helper.addInline(
+                    "logo",
+                    new ClassPathResource("static/Images/logo/logo-name.png"));
+
             mailSender.send(mimeMessage);
 
         } catch (MailSendException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid email address: " + to);
-        } catch (MailException e) {
+
+            System.out.println("========== MAIL SEND FAILED ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("FROM: [" + from + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
+            if (e.getFailedMessages() != null) {
+                e.getFailedMessages().forEach((message, exception) -> {
+                    System.out.println("FAILED MESSAGE: " + message);
+                    System.out.println("REASON: " + exception.getMessage());
+
+                    if (exception.getCause() != null) {
+                        System.out.println("CAUSE: " + exception.getCause().getMessage());
+                    }
+                });
+            }
+
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "Failed to send email to " + to + ". Please try again later.");
+                    "Email provider rejected the email. Please try again later.");
+
+        } catch (MailException e) {
+
+            System.out.println("========== MAIL ERROR ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("FROM: [" + from + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Failed to send email. Please try again later.");
+
         } catch (MessagingException e) {
+
+            System.out.println("========== EMAIL FORMATTING ERROR ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Email formatting error.");
         }
     }
+
+    // public void sendHtmlMail(String to, String subject, String htmlBody) {
+    // try {
+    // MimeMessage mimeMessage = mailSender.createMimeMessage();
+    // MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+    // helper.setTo(to);
+    // helper.setFrom(from);
+    // helper.setSubject(subject);
+    // helper.setText(htmlBody, true);
+    // helper.addInline("logo", new
+    // ClassPathResource("static/Images/logo/logo-name.png"));
+    // mailSender.send(mimeMessage);
+
+    // } catch (MailSendException e) {
+    // throw new ResponseStatusException(
+    // HttpStatus.BAD_REQUEST,
+    // "Invalid email address: " + to);
+    // } catch (MailException e) {
+    // throw new ResponseStatusException(
+    // HttpStatus.SERVICE_UNAVAILABLE,
+    // "Failed to send email to " + to + ". Please try again later.");
+    // } catch (MessagingException e) {
+    // throw new ResponseStatusException(
+    // HttpStatus.INTERNAL_SERVER_ERROR,
+    // "Email formatting error.");
+    // }
+    // }
 
     public void sendHtmlMailWithCC(String to, String subject, String htmlBody) {
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+
             helper.setTo(to);
             helper.setFrom(from);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
-            helper.addInline("logo", new ClassPathResource("static/Images/logo/logo-name.png"));
+
+            helper.addInline(
+                    "logo",
+                    new ClassPathResource("static/Images/logo/logo-name.png"));
+
             if (defaultCC != null && !defaultCC.isBlank()) {
-                String[] ccList = defaultCC.split(",");
-                helper.setCc(ccList);
+                String[] ccList = Arrays.stream(defaultCC.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isBlank())
+                        .toArray(String[]::new);
+
+                if (ccList.length > 0) {
+                    helper.setCc(ccList);
+                }
             }
 
             mailSender.send(mimeMessage);
 
         } catch (MailSendException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid email address: " + to);
-        } catch (MailException e) {
+
+            System.out.println("========== MAIL SEND FAILED ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("FROM: [" + from + "]");
+            System.out.println("CC: [" + defaultCC + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
+            if (e.getFailedMessages() != null) {
+                e.getFailedMessages().forEach((message, exception) -> {
+                    System.out.println("FAILED MESSAGE: " + message);
+                    System.out.println("REASON: " + exception.getMessage());
+
+                    if (exception.getCause() != null) {
+                        System.out.println("CAUSE: " + exception.getCause().getMessage());
+                    }
+                });
+            }
+
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "Failed to send email to " + to + ". Please try again later.");
+                    "Email provider rejected the email. Please try again later.");
+
+        } catch (MailException e) {
+
+            System.out.println("========== MAIL ERROR ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("FROM: [" + from + "]");
+            System.out.println("CC: [" + defaultCC + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Failed to send email. Please try again later.");
+
         } catch (MessagingException e) {
+
+            System.out.println("========== EMAIL FORMATTING ERROR ==========");
+            System.out.println("TO: [" + to + "]");
+            System.out.println("ERROR: " + e.getMessage());
+
+            e.printStackTrace();
+
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Email formatting error.");
         }
     }
+
+    // public void sendHtmlMailWithCC(String to, String subject, String htmlBody) {
+    // try {
+    // MimeMessage mimeMessage = mailSender.createMimeMessage();
+    // MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+    // helper.setTo(to);
+    // helper.setFrom(from);
+    // helper.setSubject(subject);
+    // helper.setText(htmlBody, true);
+    // helper.addInline("logo", new
+    // ClassPathResource("static/Images/logo/logo-name.png"));
+    // if (defaultCC != null && !defaultCC.isBlank()) {
+    // String[] ccList = defaultCC.split(",");
+    // helper.setCc(ccList);
+    // }
+
+    // mailSender.send(mimeMessage);
+
+    // } catch (MailSendException e) {
+    // System.out.println(e);
+    // throw new ResponseStatusException(
+    // HttpStatus.BAD_REQUEST,
+    // "Invalid email address: " + to + e);
+    // } catch (MailException e) {
+    // throw new ResponseStatusException(
+    // HttpStatus.SERVICE_UNAVAILABLE,
+    // "Failed to send email to " + to + ". Please try again later.");
+    // } catch (MessagingException e) {
+    // throw new ResponseStatusException(
+    // HttpStatus.INTERNAL_SERVER_ERROR,
+    // "Email formatting error.");
+    // }
+    // }
 
     @Async
     public void sendOTPForRegistration(String to, String otp) {

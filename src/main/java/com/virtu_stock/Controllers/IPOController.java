@@ -8,9 +8,9 @@ import com.virtu_stock.Configurations.AppConstants;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.IPOSearchResponse;
 import com.virtu_stock.DTO.Response.PageResponseDTO;
+import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Service.IPOService;
-
 
 import lombok.RequiredArgsConstructor;
 
@@ -42,10 +42,21 @@ public class IPOController {
             @RequestParam(defaultValue = AppConstants.PAGE_NUMBER) int page,
             @RequestParam(defaultValue = AppConstants.PAGE_SIZE) int size,
             @RequestParam(defaultValue = "startDate") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Verdict verdict,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String search) {
         // Integer.parseInt(AppConstants.PAGE_SIZE)
 
-        return ResponseEntity.ok(ipoService.findAll(page, size, sortBy, sortDir));
+        return ResponseEntity.ok(ipoService.findAll(page,
+                size,
+                sortBy,
+                sortDir,
+                status,
+                verdict,
+                type,
+                search));
     }
 
     @GetMapping(params = "status")

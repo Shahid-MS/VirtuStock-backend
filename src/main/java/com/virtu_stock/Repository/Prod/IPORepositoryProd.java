@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Projection.LatestGMPProjection;
 import com.virtu_stock.Projection.RetailSubscriptionProjection;
+import com.virtu_stock.Projection.SubscriptionProjection;
 import com.virtu_stock.Repository.IPOProfileRepository;
 
 @Profile("prod")
@@ -44,9 +45,33 @@ public interface IPORepositoryProd extends JpaRepository<IPO, UUID>, IPOProfileR
                 ipo_id::text AS ipoId,
                 subscription_value AS subscriptionValue
             FROM subscription
-            WHERE name = 'Retail'
+            WHERE name = 'Retailer'
               AND ipo_id IN (:ipoIds)
             """, nativeQuery = true)
     List<RetailSubscriptionProjection> findRetailSubscription(
+            @Param("ipoIds") List<UUID> ipoIds);
+
+    @Query(value = """
+            SELECT
+                ipo_id::text AS ipoId,
+
+                MAX(CASE WHEN name = 'QIB'
+                         THEN subscription_value END) AS qib,
+
+                MAX(CASE WHEN name = 'Non-Institutional'
+                         THEN subscription_value END) AS nonInstitutional,
+
+                MAX(CASE WHEN name = 'Retailer'
+                         THEN subscription_value END) AS retailer,
+
+                MAX(CASE WHEN name = 'Total'
+                         THEN subscription_value END) AS total
+
+            FROM subscription
+            WHERE ipo_id IN (:ipoIds)
+              AND name IN ('QIB', 'Non-Institutional', 'Retailer', 'Total')
+            GROUP BY ipo_id
+            """, nativeQuery = true)
+    List<SubscriptionProjection> findSubscription(
             @Param("ipoIds") List<UUID> ipoIds);
 }

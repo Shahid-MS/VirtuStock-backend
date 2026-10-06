@@ -33,7 +33,6 @@ public class IPOHelper {
         String[] priceRange = ((String) ipoMap.get("priceRange")).split("-");
         ipo.setMinPrice(Double.parseDouble(priceRange[0]));
         ipo.setMaxPrice(Double.parseDouble(priceRange[1]));
-        ipo.setListedPrice(ipo.getMaxPrice());
 
         ipo.setMinQty((Integer) ipoMap.get("minQty"));
         ipo.setLogo((String) ipoMap.get("logo"));

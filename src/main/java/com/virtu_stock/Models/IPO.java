@@ -165,11 +165,7 @@ public class IPO {
             return IPOStatus.CLOSED;
         }
 
-        if (listingDate != null && today.isAfter(listingDate)) {
-            return IPOStatus.LISTED;
-        }
-
-        if (listingDate != null && today.isEqual(listingDate)) {
+        if (listingDate != null && today.isEqual(listingDate) && listedPrice != null) {
             return IPOStatus.LISTED;
         }
 
