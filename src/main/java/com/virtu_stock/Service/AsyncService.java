@@ -17,9 +17,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.virtu_stock.DTO.Response.IPOAlertsDTO;
@@ -59,8 +57,7 @@ public class AsyncService {
 
     private final IPOProfileRepository ipoProfileRepository;
 
-    @Value("${mail.admin}")
-    private String adminMail;
+
 
     @SuppressWarnings("unchecked")
     @Async
@@ -788,20 +785,5 @@ public class AsyncService {
         mailService.sendIpoFetchSummaryEmail(userEmail, summary);
     }
 
-    @Scheduled(cron = "0 20 9 * * MON-FRI", zone = "Asia/Kolkata")
-    public void scheduledIPOFetch() {
-        fetchIPOInBackground("open", null, 1, adminMail);
-    }
-
-    @Scheduled(cron = "0 0 8,11,16,18,23 * * *", zone = "Asia/Kolkata")
-    @Scheduled(cron = "0 30 9,12,14,17 * * *", zone = "Asia/Kolkata")
-    public void scheduledIPOUpdate() {
-        fetchAndUpdateIPOInBackground(null, null, 1, null, adminMail);
-    }
-
-    @Scheduled(cron = "0 5 8,11,16,18,23 * * MON-FRI", zone = "Asia/Kolkata")
-    @Scheduled(cron = "0 35 9,12,14,17 * * MON-FRI", zone = "Asia/Kolkata")
-    public void scheduledSubscriptionUpdate() {
-        fetchAndUpdateSubscriptionInBackground(adminMail);
-    }
+   
 }
