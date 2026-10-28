@@ -5,8 +5,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.virtu_stock.Controllers.AppliedIpo;
 import com.virtu_stock.Models.AllotedIpo;
+import com.virtu_stock.Models.AppliedIpo;
 import com.virtu_stock.Repository.AllotedIpoRepository;
 
 import jakarta.transaction.Transactional;

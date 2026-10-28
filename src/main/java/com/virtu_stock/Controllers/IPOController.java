@@ -41,14 +41,13 @@ public class IPOController {
     public ResponseEntity<PageResponseDTO<IPOResponseDTO>> findAll(
             @RequestParam(defaultValue = AppConstants.PAGE_NUMBER) int page,
             @RequestParam(defaultValue = AppConstants.PAGE_SIZE) int size,
-            @RequestParam(defaultValue = "startDate") String sortBy,
+            @RequestParam(defaultValue = "endDate") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Verdict verdict,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String search) {
         // Integer.parseInt(AppConstants.PAGE_SIZE)
-
         return ResponseEntity.ok(ipoService.findAll(page,
                 size,
                 sortBy,
@@ -59,7 +58,7 @@ public class IPOController {
                 search));
     }
 
-    @GetMapping(params = "status")
+    @GetMapping("/status")
     public ResponseEntity<List<IPOResponseDTO>> findByStatus(@RequestParam String status) {
         List<IPOResponseDTO> iposDTO = ipoService.findByStatus(status);
         return ResponseEntity.ok(iposDTO);

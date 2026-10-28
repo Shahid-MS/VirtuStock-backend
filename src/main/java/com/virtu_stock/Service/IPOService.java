@@ -2,6 +2,7 @@ package com.virtu_stock.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +72,7 @@ public class IPOService {
                     "Page size cannot exceed " + AppConstants.PAGE_SIZE_MAX_LIMIT);
         }
 
-        List<String> allowedSortFields = List.of("startDate", "name");
+        List<String> allowedSortFields = List.of("endDate", "name");
 
         if (!allowedSortFields.contains(sortBy)) {
             throw new InvalidSortFieldException(
@@ -86,8 +87,14 @@ public class IPOService {
 
         Specification<IPO> specification = null;
 
-        if (status != null && !status.isBlank()) {
-            specification = IPOSpecification.hasStatus(status);
+        if (status != null && !status.isEmpty()) {
+            Set<IPOStatus> statuses = Arrays.stream(status.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(IPOStatus::valueOf)
+                    .collect(Collectors.toSet());
+
+            specification = IPOSpecification.hasStatuses(statuses);
         }
 
         if (verdict != null) {
@@ -129,15 +136,21 @@ public class IPOService {
 
     public List<IPOResponseDTO> findByStatus(String status) {
 
-        IPOStatus ipoStatus;
+        Set<IPOStatus> statuses;
 
         try {
-            ipoStatus = IPOStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
+            statuses = Arrays.stream(status.split(","))
+                    .map(String::trim)
+                    .map(s -> IPOStatus.valueOf(s.toUpperCase()))
+                    .collect(Collectors.toSet());
+            if (statuses.size() > 1) {
+                throw new BadRequestException("More than one status" + statuses.toString());
+            }
+        } catch (IllegalArgumentException | NullPointerException e) {
             throw new BadRequestException("Invalid IPO status: " + status);
         }
 
-        Specification<IPO> specification = IPOSpecification.hasStatus(ipoStatus.name());
+        Specification<IPO> specification = IPOSpecification.hasStatuses(statuses);
 
         List<IPO> ipos = ipoRepository.findAll(specification);
 
@@ -239,49 +252,6 @@ public class IPOService {
 
     public IPOResponseDTO updateIpo(UUID id, IPOUpdateRequestDTO ipoReq) {
         IPO ipo = findById(id);
-        if (ipoReq.getSubscriptions() != null) {
-            Set<String> PROTECTED_KEYS = Set.of(
-                    "QIB", "Non-Institutional", "Retailer", "Total");
-            for (String protectedKey : PROTECTED_KEYS) {
-                if (!ipoReq.getSubscriptions().containsKey(protectedKey)) {
-                    throw new BadRequestException(
-                            "Subscription '" + protectedKey + "' cannot be deleted");
-                }
-            }
-
-            ipo.getSubscriptions().keySet().removeIf(key -> !PROTECTED_KEYS.contains(key) &&
-                    !ipoReq.getSubscriptions().containsKey(key));
-            ipo.setSubscriptions(ipoReq.getSubscriptions());
-            ipo.setSubscriptionLastUpdated(LocalDateTime.now());
-        }
-
-        if (ipoReq.getGmp() != null) {
-            List<GMP> existingGmp = ipo.getGmp();
-            for (GMP g : ipoReq.getGmp()) {
-                if (g.getGmpDate().isBefore(ipo.getStartDate()) || g.getGmpDate().isAfter(ipo.getListingDate())) {
-                    throw new BadRequestException("GMP date " + g.getGmpDate() +
-                            " must be between IPO open date (" + ipo.getStartDate() +
-                            ") and listing date (" + ipo.getListingDate() + ")");
-                }
-
-                Optional<GMP> foundGMP = existingGmp.stream().filter(s -> s.getGmpDate().equals(g.getGmpDate()))
-                        .findFirst();
-                if (foundGMP.isPresent()) {
-                    if (foundGMP.get().getGmp() != g.getGmp()) {
-                        foundGMP.get().setGmp(g.getGmp());
-                        foundGMP.get().setLastUpdated(LocalDateTime.now());
-                    }
-                } else {
-                    existingGmp.add(GMP.builder().gmp(g.getGmp()).gmpDate(g.getGmpDate())
-                            .lastUpdated(LocalDateTime.now()).build());
-                }
-                ipo.setGmp(existingGmp);
-            }
-        }
-
-        modelMapper.typeMap(IPOUpdateRequestDTO.class, IPO.class)
-                .addMappings(mapper -> mapper.skip(IPO::setSubscriptions))
-                .addMappings(mapper -> mapper.skip(IPO::setGmp));
 
         modelMapper.getConfiguration()
                 .setSkipNullEnabled(true);
@@ -291,6 +261,64 @@ public class IPOService {
         IPO savedIpo = save(ipo);
         return modelMapper.map(savedIpo, IPOResponseDTO.class);
     }
+
+    // public IPOResponseDTO updateIpo(UUID id, IPOUpdateRequestDTO ipoReq) {
+    // IPO ipo = findById(id);
+    // if (ipoReq.getSubscriptions() != null) {
+    // Set<String> PROTECTED_KEYS = Set.of(
+    // "QIB", "Non-Institutional", "Retailer", "Total");
+    // for (String protectedKey : PROTECTED_KEYS) {
+    // if (!ipoReq.getSubscriptions().containsKey(protectedKey)) {
+    // throw new BadRequestException(
+    // "Subscription '" + protectedKey + "' cannot be deleted");
+    // }
+    // }
+
+    // ipo.getSubscriptions().keySet().removeIf(key -> !PROTECTED_KEYS.contains(key)
+    // &&
+    // !ipoReq.getSubscriptions().containsKey(key));
+    // ipo.setSubscriptions(ipoReq.getSubscriptions());
+    // ipo.setSubscriptionLastUpdated(LocalDateTime.now());
+    // }
+
+    // if (ipoReq.getGmp() != null) {
+    // List<GMP> existingGmp = ipo.getGmp();
+    // for (GMP g : ipoReq.getGmp()) {
+    // if (g.getGmpDate().isBefore(ipo.getStartDate()) ||
+    // g.getGmpDate().isAfter(ipo.getListingDate())) {
+    // throw new BadRequestException("GMP date " + g.getGmpDate() +
+    // " must be between IPO open date (" + ipo.getStartDate() +
+    // ") and listing date (" + ipo.getListingDate() + ")");
+    // }
+
+    // Optional<GMP> foundGMP = existingGmp.stream().filter(s ->
+    // s.getGmpDate().equals(g.getGmpDate()))
+    // .findFirst();
+    // if (foundGMP.isPresent()) {
+    // if (foundGMP.get().getGmp() != g.getGmp()) {
+    // foundGMP.get().setGmp(g.getGmp());
+    // foundGMP.get().setLastUpdated(LocalDateTime.now());
+    // }
+    // } else {
+    // existingGmp.add(GMP.builder().gmp(g.getGmp()).gmpDate(g.getGmpDate())
+    // .lastUpdated(LocalDateTime.now()).build());
+    // }
+    // ipo.setGmp(existingGmp);
+    // }
+    // }
+
+    // modelMapper.typeMap(IPOUpdateRequestDTO.class, IPO.class)
+    // .addMappings(mapper -> mapper.skip(IPO::setSubscriptions))
+    // .addMappings(mapper -> mapper.skip(IPO::setGmp));
+
+    // modelMapper.getConfiguration()
+    // .setSkipNullEnabled(true);
+
+    // modelMapper.map(ipoReq, ipo);
+
+    // IPO savedIpo = save(ipo);
+    // return modelMapper.map(savedIpo, IPOResponseDTO.class);
+    // }
 
     public void deleteById(UUID id) {
         if (!ipoRepository.existsById(id)) {

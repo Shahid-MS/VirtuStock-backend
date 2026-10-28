@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.virtu_stock.Controllers.AppliedIpo;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

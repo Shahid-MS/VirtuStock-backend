@@ -12,6 +12,7 @@ import com.virtu_stock.DTO.Response.PageResponseDTO;
 import com.virtu_stock.Enum.AllotmentStatus;
 import com.virtu_stock.Exceptions.CustomExceptions.BadRequestException;
 import com.virtu_stock.Models.AllotedIpo;
+import com.virtu_stock.Models.AppliedIpo;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Models.User;
 import com.virtu_stock.Service.AllotedIpoService;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,7 +51,12 @@ public class AppliedIpoController {
     private final UserService userService;
     private final IPOService ipoService;
     private final AppliedIpoService appliedIpoService;
+
+   @Qualifier("modelMapper")
     private final ModelMapper modelMapper;
+    @Qualifier("ipoModelMapper")
+    private final ModelMapper ipoModelMapper;
+
     private final AllotedIpoService allotedIpoService;
 
     @PostMapping("/apply")
@@ -110,8 +117,8 @@ public class AppliedIpoController {
     @GetMapping("/applied-ipo")
     public ResponseEntity<?> findByUser(Principal principal,
             @RequestParam(defaultValue = AppConstants.PAGE_NUMBER) int page,
-            @RequestParam(defaultValue = AppConstants.PAGE_SIZE) int size,
-            @RequestParam(defaultValue = "ipo.startDate") String sortBy,
+            @RequestParam(defaultValue = "5") int size,
+            @RequestParam(defaultValue = "ipo.endDate") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir) {
         String email = principal.getName();
         User user = userService.findByEmail(email);
@@ -133,7 +140,7 @@ public class AppliedIpoController {
         }
         AppliedIpoResponseDTO res = modelMapper.map(appliedIpo, AppliedIpoResponseDTO.class);
         if (appliedIpo.getIpo() != null) {
-            res.setIpo(modelMapper.map(appliedIpo.getIpo(), IPOResponseDTO.class));
+            res.setIpo(ipoModelMapper.map(appliedIpo.getIpo(), IPOResponseDTO.class));
         }
         if (appliedIpo.getAllotedIpo() != null) {
             res.setAllotedIpo(modelMapper.map(appliedIpo.getAllotedIpo(), AllotedIPOResponseDTO.class));

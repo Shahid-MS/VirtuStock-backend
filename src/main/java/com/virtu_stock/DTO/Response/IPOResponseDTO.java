@@ -53,6 +53,7 @@ public class IPOResponseDTO {
     private Double listingReturn;
     private Double listingReturnPercent;
     private String subscriptionLastUpdated;
+    private Double rating;
 
     public void normalizeSubscriptionsOrder() {
         if (subscriptions == null || subscriptions.isEmpty())

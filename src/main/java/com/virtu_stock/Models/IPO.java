@@ -1,5 +1,6 @@
 package com.virtu_stock.Models;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,10 +19,12 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
@@ -106,29 +109,36 @@ public class IPO {
     @Column(name = "subscription-lastUpdated")
     private LocalDateTime subscriptionLastUpdated;
 
+    @Column(name = "rating", precision = 3, scale = 2)
+    private BigDecimal rating;
+
     @Enumerated(EnumType.STRING)
     private Verdict verdict;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_strengths", joinColumns = @JoinColumn(name = "ipo_id"))
     @Column(name = "strength")
     private List<String> strengths;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_risks", joinColumns = @JoinColumn(name = "ipo_id"))
     @Column(name = "risk")
     private List<String> risks;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "subscription", joinColumns = @JoinColumn(name = "ipo_id"))
     @MapKeyColumn(name = "name")
     @Column(name = "subscription_value")
     private Map<String, Double> subscriptions;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "gmp", joinColumns = @JoinColumn(name = "ipo_id"))
     @OrderBy("gmpDate Desc")
     private List<GMP> gmp;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "registrar_id")
+    private Registrar registrar;
 
     @PrePersist
     public void initializeDefaults() {
@@ -157,35 +167,37 @@ public class IPO {
     @JsonProperty("status")
     public IPOStatus getStatus() {
         LocalDate today = LocalDate.now();
+
         if (startDate == null || endDate == null) {
             return null;
         }
 
-        if (today.isAfter(listingDate)) {
-            return IPOStatus.CLOSED;
+        if (today.isBefore(startDate)) {
+            return IPOStatus.UPCOMING;
         }
 
-        if (listingDate != null && today.isEqual(listingDate) && listedPrice != null) {
-            return IPOStatus.LISTED;
-        }
-
-        if (allotmentDate != null && today.isAfter(allotmentDate)) {
-            return IPOStatus.LISTING_PENDING;
-        }
-
-        if (allotmentDate != null && today.isEqual(allotmentDate)) {
-            return IPOStatus.ALLOTMENT;
-        }
-
-        if (today.isAfter(endDate)) {
-            return IPOStatus.ALLOTMENT_PENDING;
-        }
-
-        if (today.isEqual(endDate) || today.isAfter(startDate)) {
+        if (today.isBefore(endDate)) {
             return IPOStatus.OPEN;
         }
 
-        return IPOStatus.UPCOMING;
+        if (today.isBefore(allotmentDate)) {
+            return IPOStatus.ALLOTMENT_PENDING;
+        }
+
+        if (today.equals(allotmentDate)) {
+            return IPOStatus.ALLOTMENT;
+        }
+
+        if (today.isBefore(listingDate)) {
+            return IPOStatus.LISTING_PENDING;
+        }
+
+        if (today.equals(listingDate) && listedPrice != null) {
+            return IPOStatus.LISTED;
+        }
+
+        return IPOStatus.CLOSED;
+
     }
 
     @Transient

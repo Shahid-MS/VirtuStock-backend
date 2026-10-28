@@ -36,7 +36,7 @@ public class IPOHelper {
 
         ipo.setMinQty((Integer) ipoMap.get("minQty"));
         ipo.setLogo((String) ipoMap.get("logo"));
-        ipo.setIssueSize(new IssueSize("NA", "NA", (String) ipoMap.get("issueSize")));
+        ipo.setIssueSize(new IssueSize(null, null, (String) ipoMap.get("issueSize")));
 
         ipo.setAbout((String) ipoMap.get("about"));
 

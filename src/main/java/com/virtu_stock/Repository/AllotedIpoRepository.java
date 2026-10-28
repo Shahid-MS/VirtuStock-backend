@@ -6,8 +6,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-import com.virtu_stock.Controllers.AppliedIpo;
 import com.virtu_stock.Models.AllotedIpo;
+import com.virtu_stock.Models.AppliedIpo;
 
 public interface AllotedIpoRepository extends JpaRepository<AllotedIpo, UUID> {
     public boolean existsByAppliedIpoId(UUID id);

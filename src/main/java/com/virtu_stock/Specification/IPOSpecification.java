@@ -1,100 +1,163 @@
 package com.virtu_stock.Specification;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.virtu_stock.Enum.IPOStatus;
 import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Models.IPO;
 
+import jakarta.persistence.criteria.Predicate;
+
 public class IPOSpecification {
-    public static Specification<IPO> hasStatus(String status) {
 
-        return (root, query, cb) -> {
+        public static Specification<IPO> hasVerdict(Verdict verdict) {
 
-            LocalDate today = LocalDate.now();
+                return (root, query, cb) -> cb.equal(
+                                root.get("verdict"),
+                                verdict);
+        }
 
-            return switch (status.toUpperCase()) {
+        public static Specification<IPO> hasType(String type) {
 
-                case "UPCOMING" ->
-                    cb.greaterThan(
-                            root.get("startDate"),
-                            today);
+                return (root, query, cb) -> cb.equal(
+                                cb.lower(root.get("type")),
+                                type.toLowerCase());
+        }
 
-                case "OPEN" ->
-                    cb.and(
-                            cb.lessThanOrEqualTo(
-                                    root.get("startDate"),
-                                    today),
-                            cb.greaterThanOrEqualTo(
-                                    root.get("endDate"),
-                                    today));
+        public static Specification<IPO> search(String search) {
 
-                case "ALLOTMENT_PENDING" ->
-                    cb.and(
-                            cb.lessThan(
-                                    root.get("endDate"),
-                                    today),
-                            cb.or(
-                                    cb.isNull(
-                                            root.get("allotmentDate")),
-                                    cb.greaterThan(
-                                            root.get("allotmentDate"),
-                                            today)));
+                return (root, query, cb) -> {
 
-                case "ALLOTMENT" ->
-                    cb.equal(
-                            root.get("allotmentDate"),
-                            today);
+                        String pattern = "%" + search.toLowerCase() + "%";
 
-                case "LISTING_PENDING" ->
-                    cb.and(
-                            cb.isNotNull(
-                                    root.get("listingDate")),
-                            cb.lessThanOrEqualTo(
-                                    root.get("listingDate"),
-                                    today),
-                            cb.isNull(
-                                    root.get("listedPrice")));
+                        return cb.or(
+                                        cb.like(
+                                                        cb.lower(root.get("name")),
+                                                        pattern),
+                                        cb.like(
+                                                        cb.lower(root.get("symbol")),
+                                                        pattern));
+                };
+        }
 
-                case "LISTED" ->
-                    cb.isNotNull(
-                            root.get("listedPrice"));
+        public static Specification<IPO> hasStatuses(Set<IPOStatus> statuses) {
 
-                default ->
-                    throw new IllegalArgumentException(
-                            "Invalid IPO status: " + status);
-            };
-        };
-    }
+                return (root, query, cb) -> {
 
-    public static Specification<IPO> hasVerdict(Verdict verdict) {
+                        if (statuses == null || statuses.isEmpty()) {
+                                return cb.conjunction();
+                        }
 
-        return (root, query, cb) -> cb.equal(
-                root.get("verdict"),
-                verdict);
-    }
+                        LocalDate today = LocalDate.now();
 
-    public static Specification<IPO> hasType(String type) {
+                        List<Predicate> statusPredicates = new ArrayList<>();
 
-        return (root, query, cb) -> cb.equal(
-                cb.lower(root.get("type")),
-                type.toLowerCase());
-    }
+                        for (IPOStatus status : statuses) {
 
-    public static Specification<IPO> search(String search) {
+                                switch (status) {
 
-        return (root, query, cb) -> {
+                                        case UPCOMING:
+                                                statusPredicates.add(
+                                                                cb.greaterThan(
+                                                                                root.get("startDate"), today));
+                                                break;
 
-            String pattern = "%" + search.toLowerCase() + "%";
+                                        case OPEN:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("startDate"),
+                                                                                                today),
+                                                                                cb.greaterThan(
+                                                                                                root.get("endDate"),
+                                                                                                today)));
+                                                break;
 
-            return cb.or(
-                    cb.like(
-                            cb.lower(root.get("name")),
-                            pattern),
-                    cb.like(
-                            cb.lower(root.get("symbol")),
-                            pattern));
-        };
-    }
+                                        case ALLOTMENT_PENDING:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("endDate"),
+                                                                                                today),
+                                                                                cb.greaterThan(
+                                                                                                root.get("allotmentDate"),
+                                                                                                today)));
+                                                break;
+
+                                        case ALLOTMENT:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("endDate"),
+                                                                                                today),
+                                                                                cb.equal(
+                                                                                                root.get("allotmentDate"),
+                                                                                                today)));
+                                                break;
+
+                                        case LISTING_PENDING:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("endDate"),
+                                                                                                today),
+                                                                                cb.lessThan(
+                                                                                                root.get("allotmentDate"),
+                                                                                                today),
+                                                                                cb.greaterThan(
+                                                                                                root.get("listingDate"),
+                                                                                                today)));
+                                                break;
+
+                                        case LISTED:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("endDate"),
+                                                                                                today),
+                                                                                cb.lessThan(
+                                                                                                root.get("allotmentDate"),
+                                                                                                today),
+                                                                                cb.equal(
+                                                                                                root.get("listingDate"),
+                                                                                                today),
+                                                                                cb.isNotNull(
+                                                                                                root.get("listedPrice"))));
+                                                break;
+
+                                        case CLOSED:
+                                                statusPredicates.add(
+                                                                cb.and(
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("startDate"),
+                                                                                                today),
+                                                                                cb.lessThanOrEqualTo(
+                                                                                                root.get("endDate"),
+                                                                                                today),
+                                                                                cb.lessThan(
+                                                                                                root.get("allotmentDate"),
+                                                                                                today),
+                                                                                cb.or(
+                                                                                                cb.lessThan(
+                                                                                                                root.get("listingDate"),
+                                                                                                                today),
+                                                                                                cb.and(
+                                                                                                                cb.equal(
+                                                                                                                                root.get("listingDate"),
+                                                                                                                                today),
+                                                                                                                cb.isNull(
+                                                                                                                                root.get("listedPrice"))))));
+                                                break;
+                                }
+                        }
+
+                        return cb.or(statusPredicates.toArray(new Predicate[0]));
+                };
+        }
+
 }
