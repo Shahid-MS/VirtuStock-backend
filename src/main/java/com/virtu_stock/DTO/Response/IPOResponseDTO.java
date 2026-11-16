@@ -11,8 +11,6 @@ import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Models.GMP;
 import com.virtu_stock.Models.IPOFinancial;
 import com.virtu_stock.Models.IssueSize;
-import com.virtu_stock.Models.Registrar;
-
 import lombok.Data;
 
 @Data
