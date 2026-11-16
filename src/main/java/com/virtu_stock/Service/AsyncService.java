@@ -21,16 +21,24 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.virtu_stock.DTO.Response.IPOAlertsDTO;
+import com.virtu_stock.DTO.Response.IPOGr;
+import com.virtu_stock.DTO.Response.IPOGrList;
+
 import com.virtu_stock.DTO.Response.IPOGrDTO;
 import com.virtu_stock.DTO.Response.IPOGrFetchResult;
+
+import com.virtu_stock.DTO.Response.IPOGrGMP;
+
 import com.virtu_stock.DTO.Response.IPOGrResponseDTO;
 import com.virtu_stock.DTO.Response.IPOGrSubscriptionResponseDTO;
 import com.virtu_stock.DTO.Response.IPOGrSubscriptionSummary;
+
+import com.virtu_stock.DTO.Response.IPOGrListResponseDTO;
+
 import com.virtu_stock.Helper.IPOHelper;
 import com.virtu_stock.Models.IPO;
-import com.virtu_stock.Models.IPOGr;
-import com.virtu_stock.Models.IPOGrGMP;
 import com.virtu_stock.Models.IssueSize;
+import com.virtu_stock.Projection.IPOUpdateProjection;
 import com.virtu_stock.Projection.LatestGMPProjection;
 import com.virtu_stock.Repository.GMPBatchRepository;
 import com.virtu_stock.Repository.GMPInsert;
@@ -57,7 +65,11 @@ public class AsyncService {
 
     private final IPOProfileRepository ipoProfileRepository;
 
+    private final RegistrarService registrarService;
 
+    private final IPOFinancialService ipoFinancialService;
+
+    private final IPOService ipoService;
 
     @SuppressWarnings("unchecked")
     @Async
@@ -215,7 +227,7 @@ public class AsyncService {
         try {
             IPOGrFetchResult ipoGrFetchResult = new IPOGrFetchResult();
 
-            IPOGrResponseDTO ipoGrResponse = ipoGrService.getIPOs(status, type, months, limit);
+            IPOGrListResponseDTO ipoGrResponse = ipoGrService.getIPOs(status, type, months, limit);
 
             if (ipoGrResponse == null || ipoGrResponse.getData() == null) {
                 ipoGrFetchResult.getErrors().add(new IPOGrDTO.Error(
@@ -227,10 +239,10 @@ public class AsyncService {
                 return;
             }
 
-            List<IPOGr> ipoGrData = ipoGrResponse.getData();
+            List<IPOGrList> ipoGrData = ipoGrResponse.getData();
 
             Set<String> slugs = ipoGrData.stream()
-                    .map(IPOGr::getSlug)
+                    .map(IPOGrList::getSlug)
                     .filter(Objects::nonNull)
                     .filter(slug -> !slug.isBlank())
                     .collect(Collectors.toSet());
@@ -410,7 +422,7 @@ public class AsyncService {
     }
 
     private void addOrUpdateIPOs(
-            List<IPOGr> ipoGrs,
+            List<IPOGrList> ipoGrs,
             Set<String> slugs,
             IPOGrFetchResult ipoGrFetchResult) {
 
@@ -427,7 +439,7 @@ public class AsyncService {
                         IPO::getIpoGrSlug,
                         ipo -> ipo));
 
-        for (IPOGr ipoGr : ipoGrs) {
+        for (IPOGrList ipoGr : ipoGrs) {
             try {
                 String slug = ipoGr.getSlug();
                 String name = ipoGr.getName();
@@ -548,7 +560,7 @@ public class AsyncService {
     }
 
     private void updateGmp(
-            List<IPOGr> data,
+            List<IPOGrList> data,
             Map<String, IPO> slugIpoMap, IPOGrFetchResult ipoGrFetchResult) {
 
         if (slugIpoMap.isEmpty()) {
@@ -571,7 +583,7 @@ public class AsyncService {
 
         ZoneId zoneId = ZoneId.of("Asia/Kolkata");
 
-        for (IPOGr ipoGr : data) {
+        for (IPOGrList ipoGr : data) {
             try {
                 IPO ipo = slugIpoMap.get(ipoGr.getSlug());
 
@@ -692,7 +704,7 @@ public class AsyncService {
     }
 
     private void updateListing(
-            List<IPOGr> ipoGrData,
+            List<IPOGrList> ipoGrData,
             Map<String, IPO> slugIpoMap,
             IPOGrFetchResult ipoGrFetchResult) {
 
@@ -702,7 +714,7 @@ public class AsyncService {
 
         List<IPO> updateIpos = new ArrayList<>();
 
-        for (IPOGr ipoGr : ipoGrData) {
+        for (IPOGrList ipoGr : ipoGrData) {
             try {
                 IPO ipo = slugIpoMap.get(ipoGr.getSlug());
 
@@ -785,5 +797,142 @@ public class AsyncService {
         mailService.sendIpoFetchSummaryEmail(userEmail, summary);
     }
 
-   
+    @Async
+    public void updateIposBySlug(String email) {
+
+        IPOGrFetchResult ipoGrFetchResult = new IPOGrFetchResult();
+
+        List<IPOUpdateProjection> dbIpos = ipoRepository.findUpcomingToListingIPOs();
+
+        if (dbIpos.isEmpty()) {
+            ipoGrFetchResult.getErrors().add(
+                    new IPOGrDTO.Error(
+                            null,
+                            "No open ipos",
+                            "No ipos in Db"));
+
+            summaryMail(ipoGrFetchResult, email);
+            return;
+        }
+
+        final int batchSize = 10;
+        if (dbIpos.size() > 40) {
+            dbIpos = dbIpos.subList(40, dbIpos.size());
+        }
+        int totalIpos = dbIpos.size();
+        int totalBatches = (int) Math.ceil((double) totalIpos / batchSize);
+
+        System.out.println("Total IPOs to update: " + totalIpos);
+        System.out.println("Total batches: " + totalBatches);
+
+        for (int start = 0; start < totalIpos; start += batchSize) {
+
+            int end = Math.min(start + batchSize, totalIpos);
+
+            List<Map<UUID, IPOGr>> updateIpos = new ArrayList<>();
+
+            int batchNumber = (start / batchSize) + 1;
+
+            System.out.println(
+                    "Starting batch " + batchNumber + "/" + totalBatches);
+
+            // Step 1: Fetch IPO Guru data for this batch
+            for (int index = start; index < end; index++) {
+
+                IPOUpdateProjection currentIpo = dbIpos.get(index);
+
+                try {
+
+                    IPOGrResponseDTO response = ipoGrService.getIpoBySlug(currentIpo.getIpoGrSlug());
+
+                    if (response == null || response.getData() == null) {
+
+                        ipoGrFetchResult.getErrors().add(
+                                new IPOGrDTO.Error(
+                                        currentIpo.getId().toString(),
+                                        currentIpo.getName(),
+                                        "Data Not Available"));
+
+                    } else {
+
+                        updateIpos.add(
+                                Map.of(currentIpo.getId(), response.getData()));
+
+                        System.out.println(
+                                "Fetched IPO: " + currentIpo.getName());
+                    }
+
+                } catch (Exception e) {
+
+                    ipoGrFetchResult.getErrors().add(
+                            new IPOGrDTO.Error(
+                                    currentIpo.getId().toString(),
+                                    currentIpo.getName(),
+                                    "Slug update Exception: " + e.getMessage()));
+
+                    System.err.println(
+                            "Failed to fetch IPO: " + currentIpo.getName());
+
+                } finally {
+
+                    // Maintain 10-second API delay between requests
+                    if (index < end - 1) {
+                        try {
+                            Thread.sleep(10000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+
+                            ipoGrFetchResult.getErrors().add(
+                                    new IPOGrDTO.Error(
+                                            null,
+                                            "Batch " + batchNumber,
+                                            "Processing interrupted"));
+
+                            summaryMail(ipoGrFetchResult, email);
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Step 2: Update the successfully fetched IPOs in one transaction
+            System.out.println(
+                    "Batch " + batchNumber +
+                            " fetched successfully: " + updateIpos.size() +
+                            " out of " + (end - start));
+
+            if (!updateIpos.isEmpty()) {
+
+                try {
+
+                    ipoService.updateAllIposBySlug(updateIpos);
+
+                    System.out.println(
+                            "Batch " + batchNumber + " updated successfully");
+
+                } catch (Exception e) {
+
+                    ipoGrFetchResult.getErrors().add(
+                            new IPOGrDTO.Error(
+                                    null,
+                                    "Batch " + batchNumber,
+                                    "Bulk update failed: " + e.getMessage()));
+
+                    System.err.println(
+                            "Batch " + batchNumber + " database update failed: "
+                                    + e.getMessage());
+                }
+
+            } else {
+
+                System.out.println(
+                        "No IPOs available for update in batch " + batchNumber);
+            }
+        }
+
+        System.out.println("IPO batch processing completed.");
+
+        // Step 3: Send final summary
+        summaryMail(ipoGrFetchResult, email);
+    }
 }

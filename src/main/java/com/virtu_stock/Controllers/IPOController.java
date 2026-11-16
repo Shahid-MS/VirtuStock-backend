@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import java.util.List;
 import java.util.UUID;
 
+import org.modelmapper.MappingException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -67,7 +68,19 @@ public class IPOController {
     @GetMapping("/{id}")
     public ResponseEntity<IPOResponseDTO> findById(@PathVariable UUID id) {
         IPO ipo = ipoService.findById(id);
-        IPOResponseDTO ipoRes = modelMapper.map(ipo, IPOResponseDTO.class);
+        IPOResponseDTO ipoRes;
+
+        try {
+            ipoRes = modelMapper.map(ipo, IPOResponseDTO.class);
+
+        } catch (MappingException e) {
+
+            e.getErrorMessages().forEach(error -> System.err.println("Mapping error: " + error.getMessage()));
+
+            e.printStackTrace();
+
+            throw e;
+        }
         ipoRes.normalizeSubscriptionsOrder();
         return ResponseEntity.ok(ipoRes);
     }

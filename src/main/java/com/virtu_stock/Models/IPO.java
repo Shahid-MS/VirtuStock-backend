@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.virtu_stock.Enum.IPOStatus;
 import com.virtu_stock.Enum.Verdict;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -26,6 +27,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -117,12 +119,12 @@ public class IPO {
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_strengths", joinColumns = @JoinColumn(name = "ipo_id"))
-    @Column(name = "strength")
+    @Column(name = "strength", columnDefinition = "TEXT")
     private List<String> strengths;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_risks", joinColumns = @JoinColumn(name = "ipo_id"))
-    @Column(name = "risk")
+    @Column(name = "risk", columnDefinition = "TEXT")
     private List<String> risks;
 
     @ElementCollection(fetch = FetchType.LAZY)
@@ -139,6 +141,9 @@ public class IPO {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "registrar_id")
     private Registrar registrar;
+
+    @OneToOne(mappedBy = "ipo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private IPOFinancial financials;
 
     @PrePersist
     public void initializeDefaults() {
@@ -176,7 +181,7 @@ public class IPO {
             return IPOStatus.UPCOMING;
         }
 
-        if (today.isBefore(endDate)) {
+        if (today.isBefore(endDate) || today.isEqual(endDate)) {
             return IPOStatus.OPEN;
         }
 
@@ -188,7 +193,7 @@ public class IPO {
             return IPOStatus.ALLOTMENT;
         }
 
-        if (today.isBefore(listingDate)) {
+        if (today.isBefore(listingDate) || (today.isEqual(listingDate) && listedPrice == null)) {
             return IPOStatus.LISTING_PENDING;
         }
 
@@ -197,7 +202,6 @@ public class IPO {
         }
 
         return IPOStatus.CLOSED;
-
     }
 
     @Transient

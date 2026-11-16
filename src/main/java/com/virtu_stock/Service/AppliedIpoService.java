@@ -13,7 +13,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.virtu_stock.Configurations.AppConstants;
-import com.virtu_stock.DTO.Response.AllotedIPOResponseDTO;
 import com.virtu_stock.DTO.Response.AppliedIpoResponseDTO;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.PageResponseDTO;

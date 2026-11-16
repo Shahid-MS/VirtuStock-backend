@@ -1,4 +1,4 @@
-package com.virtu_stock.Models;
+package com.virtu_stock.DTO.Response;
 
 import java.time.LocalDate;
 
@@ -7,9 +7,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-@Getter
+@Getter 
 @Setter
-public class IPOGr {
+public class IPOGrList {
     private String slug;
     private String name;
 

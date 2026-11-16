@@ -1,6 +1,7 @@
 package com.virtu_stock.Helper;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -116,4 +117,15 @@ public class IPOHelper {
         return score >= 70;
     }
 
+    public List<String> normalizeList(List<String> values) {
+        if (values == null) {
+            return Collections.emptyList();
+        }
+
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .sorted()
+                .toList();
+    }
 }

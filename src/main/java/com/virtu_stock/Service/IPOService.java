@@ -1,14 +1,15 @@
 package com.virtu_stock.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -22,22 +23,33 @@ import org.springframework.stereotype.Service;
 
 import com.virtu_stock.Configurations.AppConstants;
 import com.virtu_stock.DTO.Request.IPOUpdateRequestDTO;
+import com.virtu_stock.DTO.Response.IPOGr;
+import com.virtu_stock.DTO.Response.IPOGrCompany;
+import com.virtu_stock.DTO.Response.IPOGrFinancials;
+import com.virtu_stock.DTO.Response.IPOGrIssue;
+import com.virtu_stock.DTO.Response.IPOGrRegistrar;
+import com.virtu_stock.DTO.Response.IPOGrTimeline;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.PageResponseDTO;
+import com.virtu_stock.DTO.Response.RegistrarResponseDTO;
 import com.virtu_stock.Enum.IPOStatus;
 import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Exceptions.CustomExceptions.BadRequestException;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidPaginationParameterException;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidSortFieldException;
 import com.virtu_stock.Exceptions.CustomExceptions.ResourceNotFoundException;
+import com.virtu_stock.Helper.IPOHelper;
 import com.virtu_stock.Models.GMP;
 import com.virtu_stock.Models.IPO;
+import com.virtu_stock.Models.Registrar;
+import com.virtu_stock.Projection.IPORegistrarProjection;
 import com.virtu_stock.Projection.LatestGMPProjection;
 import com.virtu_stock.Projection.SubscriptionProjection;
 import com.virtu_stock.Repository.IPOProfileRepository;
 import com.virtu_stock.Repository.IPORepository;
 import com.virtu_stock.Specification.IPOSpecification;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -46,6 +58,9 @@ public class IPOService {
 
     private final IPORepository ipoRepository;
     private final IPOProfileRepository ipoProfileRepository;
+    private final IPOHelper ipoHelper;
+    private final RegistrarService registrarService;
+    private final IPOFinancialService ipoFinancialService;
 
     @Qualifier("modelMapper")
     private final ModelMapper modelMapper;
@@ -187,6 +202,15 @@ public class IPOService {
                         sub -> UUID.fromString(sub.getIpoId()),
                         sub -> sub));
 
+        List<IPORegistrarProjection> registrars = ipoProfileRepository.findRegistrars(ipoIds);
+
+        Map<UUID, RegistrarResponseDTO> registrarMap = registrars.stream()
+                .collect(Collectors.toMap(
+                        IPORegistrarProjection::getIpoId,
+                        registrar -> ipoModelMapper.map(
+                                registrar.getRegistrar(),
+                                RegistrarResponseDTO.class)));
+
         // Map IPO + GMP + Subscription
         List<IPOResponseDTO> iposDTO = ipos.stream()
                 .map(ipo -> {
@@ -231,6 +255,8 @@ public class IPOService {
                                     : 0.0);
 
                     dto.setSubscriptions(subscription);
+
+                    dto.setRegistrar(registrarMap.get(ipo.getId()));
 
                     return dto;
                 })
@@ -367,6 +393,178 @@ public class IPOService {
         }
 
         return ((double) (thisMonthIpos - lastMonthIpos) / lastMonthIpos) * 100;
+    }
+
+    @Transactional
+    public void updateAllIposBySlug(List<Map<UUID, IPOGr>> updateIpos) {
+
+        if (updateIpos == null || updateIpos.isEmpty()) {
+            return;
+        }
+
+        // 1. Extract IPO IDs
+        List<UUID> ids = updateIpos.stream()
+                .flatMap(map -> map.keySet().stream())
+                .toList();
+
+        // 2. Fetch all IPO entities
+        List<IPO> dbIpos = ipoRepository.findAllForBulkUpdate(ids);
+
+        // 3. Initialize lazy collections
+        ipoRepository.fetchStrengths(ids);
+        ipoRepository.fetchRisks(ids);
+        ipoRepository.fetchSubscriptions(ids);
+        ipoRepository.fetchGmp(ids);
+        ipoRepository.fetchRegistrar(ids);
+        ipoRepository.fetchFinancials(ids);
+
+        // 4. Create lookup map
+        Map<UUID, IPO> ipoMap = dbIpos.stream()
+                .collect(Collectors.toMap(IPO::getId, Function.identity()));
+        List<IPO> updatIpos = new ArrayList<>();
+        // 5. Update each IPO
+        for (Map<UUID, IPOGr> updateMap : updateIpos) {
+
+            for (Map.Entry<UUID, IPOGr> entry : updateMap.entrySet()) {
+
+                IPO ipo = ipoMap.get(entry.getKey());
+                IPOGr ipoGr = entry.getValue();
+
+                if (ipo == null || ipoGr == null) {
+                    continue;
+                }
+
+                boolean changed = false;
+
+                // Timelines
+                if (ipoGr.getTimeline() != null) {
+                    IPOGrTimeline timeline = ipoGr.getTimeline();
+
+                    if (!Objects.equals(ipo.getStartDate(), timeline.getOpenDate())) {
+                        ipo.setStartDate(timeline.getOpenDate());
+                        changed = true;
+                    }
+
+                    if (!Objects.equals(ipo.getEndDate(), timeline.getCloseDate())) {
+                        ipo.setEndDate(timeline.getCloseDate());
+                        changed = true;
+                    }
+
+                    if (!Objects.equals(ipo.getAllotmentDate(), timeline.getAllotmentDate())) {
+                        ipo.setAllotmentDate(timeline.getAllotmentDate());
+                        changed = true;
+                    }
+
+                    if (!Objects.equals(ipo.getListingDate(), timeline.getListingDate())) {
+                        ipo.setListingDate(timeline.getListingDate());
+                        changed = true;
+                    }
+                }
+
+                // Issue
+                if (ipoGr.getIssue() != null) {
+                    IPOGrIssue issue = ipoGr.getIssue();
+
+                    if (!Objects.equals(ipo.getMinPrice(), issue.getPriceMin())) {
+                        ipo.setMinPrice(issue.getPriceMin());
+                        changed = true;
+                    }
+
+                    if (!Objects.equals(ipo.getMaxPrice(), issue.getPriceMax())) {
+                        ipo.setMaxPrice(issue.getPriceMax());
+                        changed = true;
+                    }
+
+                    if (!Objects.equals(ipo.getMinQty(), issue.getLotSize())) {
+                        ipo.setMinQty(issue.getLotSize());
+                        changed = true;
+                    }
+
+                    String symbol = issue.getNseSymbol();
+
+                    if (symbol != null) {
+                        symbol = symbol.replace(".NS", "");
+
+                        if (!Objects.equals(symbol, ipo.getSymbol())) {
+                            ipo.setSymbol(symbol);
+                            changed = true;
+                        }
+                    }
+                }
+
+                // Company
+                if (ipoGr.getCompany() != null) {
+                    IPOGrCompany company = ipoGr.getCompany();
+
+                    if (!Objects.equals(ipo.getAbout(), company.getAbout())) {
+                        ipo.setAbout(company.getAbout());
+                        changed = true;
+                    }
+
+                    List<String> newStrengths = ipoHelper.normalizeList(company.getStrengths());
+
+                    List<String> oldStrengths = ipoHelper.normalizeList(ipo.getStrengths());
+
+                    if (!Objects.equals(oldStrengths, newStrengths)) {
+                        ipo.setStrengths(company.getStrengths() == null
+                                ? new ArrayList<>()
+                                : new ArrayList<>(company.getStrengths()));
+                        changed = true;
+                    }
+
+                    List<String> newRisks = ipoHelper.normalizeList(company.getRisks());
+
+                    List<String> oldRisks = ipoHelper.normalizeList(ipo.getRisks());
+
+                    if (!Objects.equals(oldRisks, newRisks)) {
+                        ipo.setRisks(company.getRisks() == null
+                                ? new ArrayList<>()
+                                : new ArrayList<>(company.getRisks()));
+                        changed = true;
+                    }
+
+                    IPOGrFinancials financials = company.getFinancials();
+
+                    if (financials != null &&
+                            ipoFinancialService.saveOrUpdateFinancials(ipo, financials)) {
+                        changed = true;
+                    }
+                }
+
+                // Registrar
+                if (ipoGr.getContacts() != null) {
+                    IPOGrRegistrar registrarData = ipoGr.getContacts().getRegistrar();
+
+                    if (registrarData != null) {
+                        Registrar registrar = registrarService.findOrCreate(
+                                registrarData.getName(),
+                                registrarData.getSlug(),
+                                registrarData.getStatusPage());
+
+                        Registrar existingRegistrar = ipo.getRegistrar();
+
+                        if (registrar != null &&
+                                (existingRegistrar == null ||
+                                        !Objects.equals(
+                                                existingRegistrar.getId(),
+                                                registrar.getId()))) {
+                            ipo.setRegistrar(registrar);
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (changed) {
+                    updatIpos.add(ipo);
+                    System.out.println("IPO updated: " + ipo.getName());
+                }
+            }
+        }
+
+        // 6. Save all IPOs together
+        ipoRepository.saveAll(updatIpos);
+
+        System.out.println("Bulk IPO update completed. Total IPOs: " + dbIpos.size());
     }
 
 }

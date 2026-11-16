@@ -13,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.virtu_stock.DTO.Response.IPOGrResponseDTO;
 import com.virtu_stock.DTO.Response.IPOGrSubscriptionResponseDTO;
+import com.virtu_stock.DTO.Response.IPOGrListResponseDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +34,7 @@ public class IPOGrService {
         return headers;
     }
 
-    public IPOGrResponseDTO getIPOs(String status, String type, Integer months, Integer limit) {
+    public IPOGrListResponseDTO getIPOs(String status, String type, Integer months, Integer limit) {
         Map<String, String> params = new HashMap<>();
         if (status != null)
             params.put("status", status);
@@ -50,11 +51,11 @@ public class IPOGrService {
         params.forEach((key, value) -> url.append(key).append("=").append(value).append("&"));
 
         HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
-        ResponseEntity<IPOGrResponseDTO> response = restTemplate.exchange(
+        ResponseEntity<IPOGrListResponseDTO> response = restTemplate.exchange(
                 url.toString(),
                 HttpMethod.GET,
                 entity,
-                IPOGrResponseDTO.class);
+                IPOGrListResponseDTO.class);
         return response.getBody();
     }
 
@@ -69,6 +70,21 @@ public class IPOGrService {
                 HttpMethod.GET,
                 entity,
                 IPOGrSubscriptionResponseDTO.class);
+
+        return response.getBody();
+    }
+
+    public IPOGrResponseDTO getIpoBySlug(String slug) {
+
+        String url = ipoGrURL + "/ipos/" + slug;
+
+        HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
+
+        ResponseEntity<IPOGrResponseDTO> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                IPOGrResponseDTO.class);
 
         return response.getBody();
     }

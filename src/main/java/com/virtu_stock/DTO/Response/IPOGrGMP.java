@@ -1,4 +1,4 @@
-package com.virtu_stock.Models;
+package com.virtu_stock.DTO.Response;
 
 import java.math.BigDecimal;
 import java.time.Instant;

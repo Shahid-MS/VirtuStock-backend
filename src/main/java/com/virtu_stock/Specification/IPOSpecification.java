@@ -63,17 +63,22 @@ public class IPOSpecification {
 
                                         case UPCOMING:
                                                 statusPredicates.add(
-                                                                cb.greaterThan(
-                                                                                root.get("startDate"), today));
+                                                                cb.and(
+                                                                                cb.isNotNull(root.get("startDate")),
+                                                                                cb.isNotNull(root.get("endDate")),
+                                                                                cb.greaterThan(root.get("startDate"),
+                                                                                                today)));
                                                 break;
 
                                         case OPEN:
                                                 statusPredicates.add(
                                                                 cb.and(
+                                                                                cb.isNotNull(root.get("startDate")),
+                                                                                cb.isNotNull(root.get("endDate")),
                                                                                 cb.lessThanOrEqualTo(
                                                                                                 root.get("startDate"),
                                                                                                 today),
-                                                                                cb.greaterThan(
+                                                                                cb.greaterThanOrEqualTo(
                                                                                                 root.get("endDate"),
                                                                                                 today)));
                                                 break;
@@ -81,77 +86,59 @@ public class IPOSpecification {
                                         case ALLOTMENT_PENDING:
                                                 statusPredicates.add(
                                                                 cb.and(
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("endDate"),
-                                                                                                today),
-                                                                                cb.greaterThan(
-                                                                                                root.get("allotmentDate"),
+                                                                                cb.lessThan(root.get("endDate"), today),
+                                                                                cb.greaterThan(root
+                                                                                                .get("allotmentDate"),
                                                                                                 today)));
                                                 break;
 
                                         case ALLOTMENT:
                                                 statusPredicates.add(
                                                                 cb.and(
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("endDate"),
-                                                                                                today),
-                                                                                cb.equal(
-                                                                                                root.get("allotmentDate"),
+                                                                                cb.lessThan(root.get("endDate"), today),
+                                                                                cb.equal(root.get("allotmentDate"),
                                                                                                 today)));
                                                 break;
 
                                         case LISTING_PENDING:
                                                 statusPredicates.add(
                                                                 cb.and(
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("endDate"),
+                                                                                cb.lessThan(root.get("allotmentDate"),
                                                                                                 today),
-                                                                                cb.lessThan(
-                                                                                                root.get("allotmentDate"),
-                                                                                                today),
-                                                                                cb.greaterThan(
-                                                                                                root.get("listingDate"),
-                                                                                                today)));
+                                                                                cb.or(
+                                                                                                cb.greaterThan(root.get(
+                                                                                                                "listingDate"),
+                                                                                                                today),
+                                                                                                cb.and(
+                                                                                                                cb.equal(root.get(
+                                                                                                                                "listingDate"),
+                                                                                                                                today),
+                                                                                                                cb.isNull(root.get(
+                                                                                                                                "listedPrice"))))));
                                                 break;
 
                                         case LISTED:
                                                 statusPredicates.add(
                                                                 cb.and(
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("endDate"),
+                                                                                cb.equal(root.get("listingDate"),
                                                                                                 today),
-                                                                                cb.lessThan(
-                                                                                                root.get("allotmentDate"),
-                                                                                                today),
-                                                                                cb.equal(
-                                                                                                root.get("listingDate"),
-                                                                                                today),
-                                                                                cb.isNotNull(
-                                                                                                root.get("listedPrice"))));
+                                                                                cb.isNotNull(root.get("listedPrice"))));
                                                 break;
 
                                         case CLOSED:
                                                 statusPredicates.add(
-                                                                cb.and(
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("startDate"),
+                                                                cb.or(
+                                                                                cb.greaterThan(
+                                                                                                root.get("listingDate"),
                                                                                                 today),
-                                                                                cb.lessThanOrEqualTo(
-                                                                                                root.get("endDate"),
-                                                                                                today),
-                                                                                cb.lessThan(
-                                                                                                root.get("allotmentDate"),
-                                                                                                today),
-                                                                                cb.or(
-                                                                                                cb.lessThan(
-                                                                                                                root.get("listingDate"),
+                                                                                cb.and(
+                                                                                                cb.lessThan(root.get(
+                                                                                                                "listingDate"),
                                                                                                                 today),
-                                                                                                cb.and(
-                                                                                                                cb.equal(
-                                                                                                                                root.get("listingDate"),
-                                                                                                                                today),
-                                                                                                                cb.isNull(
-                                                                                                                                root.get("listedPrice"))))));
+                                                                                                cb.greaterThan(
+                                                                                                                root.get("startDate"),
+                                                                                                                today)
+                                                                                                                .not())));
                                                 break;
                                 }
                         }

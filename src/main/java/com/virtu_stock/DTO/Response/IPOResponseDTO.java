@@ -9,7 +9,9 @@ import java.util.UUID;
 import com.virtu_stock.Enum.IPOStatus;
 import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Models.GMP;
+import com.virtu_stock.Models.IPOFinancial;
 import com.virtu_stock.Models.IssueSize;
+import com.virtu_stock.Models.Registrar;
 
 import lombok.Data;
 
@@ -48,6 +50,10 @@ public class IPOResponseDTO {
     private List<String> risks;
 
     private LinkedHashMap<String, Double> subscriptions;
+
+    private RegistrarResponseDTO registrar;
+
+    private IPOFinancial financials;
 
     private List<GMP> gmp;
     private Double listingReturn;
