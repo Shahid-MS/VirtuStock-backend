@@ -816,9 +816,9 @@ public class AsyncService {
         }
 
         final int batchSize = 10;
-        if (dbIpos.size() > 40) {
-            dbIpos = dbIpos.subList(40, dbIpos.size());
-        }
+        // if (dbIpos.size() > 40) {
+        //     dbIpos = dbIpos.subList(40, dbIpos.size());
+        // }
         int totalIpos = dbIpos.size();
         int totalBatches = (int) Math.ceil((double) totalIpos / batchSize);
 
