@@ -23,7 +23,7 @@ import com.virtu_stock.DTO.Response.UserResponseDTO;
 import com.virtu_stock.Exceptions.CustomExceptions.BadRequestException;
 import com.virtu_stock.Models.CustomUserDetails;
 import com.virtu_stock.Models.User;
-import com.virtu_stock.Service.ImageUploadService;
+import com.virtu_stock.Service.CloudinaryService;
 import com.virtu_stock.Service.RatingService;
 import com.virtu_stock.Service.UserService;
 import com.virtu_stock.Util.JWTUtil;
@@ -42,7 +42,7 @@ public class UserController {
     private final UserService userService;
     private final RatingService ratingService;
     private final ModelMapper modelMapper;
-    private final ImageUploadService imageUploadService;
+    private final CloudinaryService cloudinaryService;
     private final JWTUtil jwtUtil;
 
     @GetMapping()
@@ -67,7 +67,7 @@ public class UserController {
         }
 
         if (file != null && !file.isEmpty()) {
-            String imageUrl = imageUploadService.uploadImage(file, "virtustock", "profile_pic",
+            String imageUrl = cloudinaryService.uploadImage(file, "virtustock", "profile_pic",
                     user.getId().toString());
             updates.put("profilePicUrl", imageUrl);
         }

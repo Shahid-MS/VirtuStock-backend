@@ -1,6 +1,7 @@
 package com.virtu_stock.Configurations;
 
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeMap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -25,14 +26,19 @@ public class AppConfig {
 
         ModelMapper mapper = new ModelMapper();
 
-        mapper.typeMap(IPO.class, IPOResponseDTO.class)
-                .addMappings(mapping -> {
-                    mapping.skip(IPOResponseDTO::setStrengths);
-                    mapping.skip(IPOResponseDTO::setRisks);
-                    mapping.skip(IPOResponseDTO::setSubscriptions);
-                    mapping.skip(IPOResponseDTO::setGmp);
-                    mapping.skip(IPOResponseDTO::setAbout);
-                });
+        TypeMap<IPO, IPOResponseDTO> typeMap = mapper.emptyTypeMap(IPO.class, IPOResponseDTO.class);
+
+        typeMap.addMappings(mapping -> {
+            mapping.skip(IPOResponseDTO::setStrengths);
+            mapping.skip(IPOResponseDTO::setRisks);
+            mapping.skip(IPOResponseDTO::setSubscriptions);
+            mapping.skip(IPOResponseDTO::setGmp);
+            mapping.skip(IPOResponseDTO::setAbout);
+            mapping.skip(IPOResponseDTO::setRegistrar);
+            mapping.skip(IPOResponseDTO::setFinancials);
+        });
+
+        typeMap.implicitMappings();
 
         return mapper;
     }
@@ -42,13 +48,18 @@ public class AppConfig {
 
         ModelMapper mapper = new ModelMapper();
 
-        mapper.typeMap(IPO.class, IPOResponseDTO.class)
-                .addMappings(mapping -> {
-                    mapping.skip(IPOResponseDTO::setStrengths);
-                    mapping.skip(IPOResponseDTO::setRisks);
-                    mapping.skip(IPOResponseDTO::setSubscriptions);
-                    mapping.skip(IPOResponseDTO::setAbout);
-                });
+        TypeMap<IPO, IPOResponseDTO> typeMap = mapper.emptyTypeMap(IPO.class, IPOResponseDTO.class);
+
+        typeMap.addMappings(mapping -> {
+            mapping.skip(IPOResponseDTO::setStrengths);
+            mapping.skip(IPOResponseDTO::setRisks);
+            mapping.skip(IPOResponseDTO::setSubscriptions);
+            mapping.skip(IPOResponseDTO::setAbout);
+            mapping.skip(IPOResponseDTO::setRegistrar);
+            mapping.skip(IPOResponseDTO::setFinancials);
+        });
+
+        typeMap.implicitMappings();
 
         return mapper;
     }

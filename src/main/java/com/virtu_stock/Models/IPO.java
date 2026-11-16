@@ -1,8 +1,8 @@
 package com.virtu_stock.Models;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,17 +13,21 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.virtu_stock.Enum.IPOStatus;
 import com.virtu_stock.Enum.Verdict;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapKeyColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -32,12 +36,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "ipo")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -49,6 +55,9 @@ public class IPO {
 
     @Column(name = "ipo_alert_id", unique = true)
     private String ipoAlertId;
+
+    @Column(name = "ipo_gr_slug", unique = true)
+    private String ipoGrSlug;
 
     @NotBlank(message = "Name is required")
     private String name;
@@ -102,29 +111,39 @@ public class IPO {
     @Column(name = "subscription-lastUpdated")
     private LocalDateTime subscriptionLastUpdated;
 
+    @Column(name = "rating", precision = 3, scale = 2)
+    private BigDecimal rating;
+
     @Enumerated(EnumType.STRING)
     private Verdict verdict;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_strengths", joinColumns = @JoinColumn(name = "ipo_id"))
-    @Column(name = "strength")
+    @Column(name = "strength", columnDefinition = "TEXT")
     private List<String> strengths;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "ipo_risks", joinColumns = @JoinColumn(name = "ipo_id"))
-    @Column(name = "risk")
+    @Column(name = "risk", columnDefinition = "TEXT")
     private List<String> risks;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "subscription", joinColumns = @JoinColumn(name = "ipo_id"))
     @MapKeyColumn(name = "name")
     @Column(name = "subscription_value")
     private Map<String, Double> subscriptions;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "gmp", joinColumns = @JoinColumn(name = "ipo_id"))
     @OrderBy("gmpDate Desc")
     private List<GMP> gmp;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "registrar_id")
+    private Registrar registrar;
+
+    @OneToOne(mappedBy = "ipo", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private IPOFinancial financials;
 
     @PrePersist
     public void initializeDefaults() {
@@ -153,60 +172,36 @@ public class IPO {
     @JsonProperty("status")
     public IPOStatus getStatus() {
         LocalDate today = LocalDate.now();
+
         if (startDate == null || endDate == null) {
             return null;
         }
 
-        if (today.isAfter(listingDate)) {
-            return IPOStatus.CLOSED;
+        if (today.isBefore(startDate)) {
+            return IPOStatus.UPCOMING;
         }
 
-        if (today.isEqual(listingDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(10, 0))) {
-                return IPOStatus.LISTED;
-            } else {
-                return IPOStatus.LISTING_PENDING;
-            }
-        }
-
-        if (today.isAfter(allotmentDate)) {
-            return IPOStatus.LISTING_PENDING;
-        }
-
-        if (today.isEqual(allotmentDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(17, 0))) {
-                return IPOStatus.LISTING_PENDING;
-            } else {
-                return IPOStatus.ALLOTMENT;
-            }
-        }
-
-        if (today.isAfter(endDate)) {
-            return IPOStatus.ALLOTMENT_PENDING;
-        }
-
-        if (today.isEqual(endDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(17, 0))) {
-                return IPOStatus.LISTING_PENDING;
-            } else {
-                return IPOStatus.OPEN;
-            }
-        }
-
-        if (today.isAfter(startDate)) {
+        if (today.isBefore(endDate) || today.isEqual(endDate)) {
             return IPOStatus.OPEN;
         }
 
-        if (today.isEqual(startDate)) {
-            LocalTime nowTime = LocalTime.now();
-            if (nowTime.isAfter(LocalTime.of(9, 0))) {
-                return IPOStatus.OPEN;
-            }
+        if (today.isBefore(allotmentDate)) {
+            return IPOStatus.ALLOTMENT_PENDING;
         }
-        return IPOStatus.UPCOMING;
+
+        if (today.equals(allotmentDate)) {
+            return IPOStatus.ALLOTMENT;
+        }
+
+        if (today.isBefore(listingDate) || (today.isEqual(listingDate) && listedPrice == null)) {
+            return IPOStatus.LISTING_PENDING;
+        }
+
+        if (today.equals(listingDate) && listedPrice != null) {
+            return IPOStatus.LISTED;
+        }
+
+        return IPOStatus.CLOSED;
     }
 
     @Transient

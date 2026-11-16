@@ -1,6 +1,6 @@
 package com.virtu_stock.DTO.Request;
 
-import com.virtu_stock.Controllers.AppliedIpo;
+import com.virtu_stock.Models.AppliedIpo;
 
 import lombok.Data;
 

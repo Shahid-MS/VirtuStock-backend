@@ -8,15 +8,16 @@ import com.virtu_stock.Configurations.AppConstants;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.IPOSearchResponse;
 import com.virtu_stock.DTO.Response.PageResponseDTO;
+import com.virtu_stock.Enum.Verdict;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Service.IPOService;
-
 
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
 
+import org.modelmapper.MappingException;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
@@ -41,14 +42,24 @@ public class IPOController {
     public ResponseEntity<PageResponseDTO<IPOResponseDTO>> findAll(
             @RequestParam(defaultValue = AppConstants.PAGE_NUMBER) int page,
             @RequestParam(defaultValue = AppConstants.PAGE_SIZE) int size,
-            @RequestParam(defaultValue = "startDate") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "endDate") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Verdict verdict,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String search) {
         // Integer.parseInt(AppConstants.PAGE_SIZE)
-
-        return ResponseEntity.ok(ipoService.findAll(page, size, sortBy, sortDir));
+        return ResponseEntity.ok(ipoService.findAll(page,
+                size,
+                sortBy,
+                sortDir,
+                status,
+                verdict,
+                type,
+                search));
     }
 
-    @GetMapping(params = "status")
+    @GetMapping("/status")
     public ResponseEntity<List<IPOResponseDTO>> findByStatus(@RequestParam String status) {
         List<IPOResponseDTO> iposDTO = ipoService.findByStatus(status);
         return ResponseEntity.ok(iposDTO);
@@ -57,7 +68,19 @@ public class IPOController {
     @GetMapping("/{id}")
     public ResponseEntity<IPOResponseDTO> findById(@PathVariable UUID id) {
         IPO ipo = ipoService.findById(id);
-        IPOResponseDTO ipoRes = modelMapper.map(ipo, IPOResponseDTO.class);
+        IPOResponseDTO ipoRes;
+
+        try {
+            ipoRes = modelMapper.map(ipo, IPOResponseDTO.class);
+
+        } catch (MappingException e) {
+
+            e.getErrorMessages().forEach(error -> System.err.println("Mapping error: " + error.getMessage()));
+
+            e.printStackTrace();
+
+            throw e;
+        }
         ipoRes.normalizeSubscriptionsOrder();
         return ResponseEntity.ok(ipoRes);
     }

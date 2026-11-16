@@ -1,0 +1,92 @@
+package com.virtu_stock.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import com.virtu_stock.DTO.Response.IPOGrResponseDTO;
+import com.virtu_stock.DTO.Response.IPOGrSubscriptionResponseDTO;
+import com.virtu_stock.DTO.Response.IPOGrListResponseDTO;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class IPOGrService {
+    @Value("${ipogr.api.key}")
+    private String apiKey;
+    @Value("${ipogr.url}")
+    private String ipoGrURL;
+
+    private final RestTemplate restTemplate;
+
+    private HttpHeaders createHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("x-api-key", apiKey);
+        headers.set("Content-Type", "application/json");
+        return headers;
+    }
+
+    public IPOGrListResponseDTO getIPOs(String status, String type, Integer months, Integer limit) {
+        Map<String, String> params = new HashMap<>();
+        if (status != null)
+            params.put("status", status);
+        if (type != null)
+            params.put("type", type);
+        if (months != null) {
+            params.put("months", months.toString());
+        }
+        if (limit != null) {
+            params.put("months", months.toString());
+        }
+
+        StringBuilder url = new StringBuilder(ipoGrURL + "/ipos?");
+        params.forEach((key, value) -> url.append(key).append("=").append(value).append("&"));
+
+        HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<IPOGrListResponseDTO> response = restTemplate.exchange(
+                url.toString(),
+                HttpMethod.GET,
+                entity,
+                IPOGrListResponseDTO.class);
+        return response.getBody();
+    }
+
+    public IPOGrSubscriptionResponseDTO getSubscription(String slug) {
+
+        String url = ipoGrURL + "/ipos/" + slug + "/subscription";
+
+        HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
+
+        ResponseEntity<IPOGrSubscriptionResponseDTO> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                IPOGrSubscriptionResponseDTO.class);
+
+        return response.getBody();
+    }
+
+    public IPOGrResponseDTO getIpoBySlug(String slug) {
+
+        String url = ipoGrURL + "/ipos/" + slug;
+
+        HttpEntity<Void> entity = new HttpEntity<>(createHeaders());
+
+        ResponseEntity<IPOGrResponseDTO> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                IPOGrResponseDTO.class);
+
+        return response.getBody();
+    }
+
+}

@@ -5,21 +5,20 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-
 import com.virtu_stock.Configurations.AppConstants;
-import com.virtu_stock.Controllers.AppliedIpo;
-import com.virtu_stock.DTO.Response.AllotedIPOResponseDTO;
 import com.virtu_stock.DTO.Response.AppliedIpoResponseDTO;
 import com.virtu_stock.DTO.Response.IPOResponseDTO;
 import com.virtu_stock.DTO.Response.PageResponseDTO;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidPaginationParameterException;
 import com.virtu_stock.Exceptions.CustomExceptions.InvalidSortFieldException;
+import com.virtu_stock.Models.AppliedIpo;
 import com.virtu_stock.Models.IPO;
 import com.virtu_stock.Models.User;
 import com.virtu_stock.Repository.AppliedIpoRepository;
@@ -32,7 +31,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AppliedIpoService {
     private final AppliedIpoRepository appliedIpoRepository;
+   @Qualifier("modelMapper")
     private final ModelMapper modelMapper;
+    @Qualifier("ipoModelMapper")
+    private final ModelMapper ipoModelMapper;
 
     public AppliedIpo save(AppliedIpo appliedIpo) {
         return appliedIpoRepository.save(appliedIpo);
@@ -55,7 +57,7 @@ public class AppliedIpoService {
         }
 
         List<String> allowedSortFields = List.of(
-                "ipo.startDate",
+                "ipo.endDate",
                 "ipo.name",
                 "appliedDate");
 
@@ -71,13 +73,13 @@ public class AppliedIpoService {
         List<AppliedIpoResponseDTO> appliedIpoResponseDTOs = appliedIpos.stream().map(a -> {
             AppliedIpoResponseDTO appliedIpoResponseDTO = new AppliedIpoResponseDTO();
             appliedIpoResponseDTO.setId(a.getId());
-            appliedIpoResponseDTO.setIpo(modelMapper.map(a.getIpo(), IPOResponseDTO.class));
+            appliedIpoResponseDTO.setIpo(ipoModelMapper.map(a.getIpo(), IPOResponseDTO.class));
             appliedIpoResponseDTO.setAppliedLot(a.getAppliedLot());
             appliedIpoResponseDTO.setAllotment(a.getAllotment());
             appliedIpoResponseDTO.setAppliedDate(a.getAppliedDate());
-            if (a.getAllotedIpo() != null) {
-                appliedIpoResponseDTO.setAllotedIpo(modelMapper.map(a.getAllotedIpo(), AllotedIPOResponseDTO.class));
-            }
+            // if (a.getAllotedIpo() != null) {
+            //     appliedIpoResponseDTO.setAllotedIpo(modelMapper.map(a.getAllotedIpo(), AllotedIPOResponseDTO.class));
+            // }
             return appliedIpoResponseDTO;
         }).toList();
 

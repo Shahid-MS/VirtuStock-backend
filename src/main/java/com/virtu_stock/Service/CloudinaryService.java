@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ImageUploadService {
+public class CloudinaryService {
 
     private final Cloudinary cloudinary;
 
@@ -25,18 +25,18 @@ public class ImageUploadService {
             "image/jpg");
 
     public String uploadImage(
-            MultipartFile profilePic,
+            MultipartFile pic,
             String mainFolder,
             String subFolder,
-            String userId) {
-        validateFile(profilePic);
+            String name) {
+        validateFile(pic);
         String folderPath = mainFolder + "/" + subFolder;
         try {
             Map<?, ?> uploadResult = cloudinary.uploader().upload(
-                    profilePic.getBytes(),
+                    pic.getBytes(),
                     ObjectUtils.asMap(
                             "folder", folderPath,
-                            "public_id", userId,
+                            "public_id", name,
                             "overwrite", true,
                             "quality", "auto",
                             "resource_type", "image"));

@@ -1,13 +1,10 @@
-package com.virtu_stock.Controllers;
+package com.virtu_stock.Models;
 
 import java.beans.Transient;
 import java.time.LocalDate;
 import java.util.UUID;
 
 import com.virtu_stock.Enum.AllotmentStatus;
-import com.virtu_stock.Models.AllotedIpo;
-import com.virtu_stock.Models.IPO;
-import com.virtu_stock.Models.User;
 
 import io.micrometer.common.lang.Nullable;
 import jakarta.persistence.CascadeType;
