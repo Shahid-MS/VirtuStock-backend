@@ -539,7 +539,7 @@ public class IPOService {
                         Registrar registrar = registrarService.findOrCreate(
                                 registrarData.getName(),
                                 registrarData.getSlug(),
-                                registrarData.getStatusPage());
+                                registrarData.getWebsite(), registrarData.getLogo());
 
                         Registrar existingRegistrar = ipo.getRegistrar();
 

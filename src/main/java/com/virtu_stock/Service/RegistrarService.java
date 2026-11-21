@@ -37,12 +37,9 @@ public class RegistrarService {
         return registrarRepository.save(registrar);
     }
 
-    public Registrar findOrCreate(
-            String name,
-            String slug,
-            String url) {
-
-        if (slug == null || slug.isBlank()) {
+    public Registrar findOrCreate(String name, String slug, String url, String logo) {
+        if (slug == null || slug.isBlank() || name == null || name.isBlank() || url == null || url.isBlank()
+                || logo == null || logo.isBlank()) {
             return null;
         }
 
@@ -61,6 +58,11 @@ public class RegistrarService {
                         changed = true;
                     }
 
+                    if (!Objects.equals(registrar.getLogo(), logo)) {
+                        registrar.setLogo(logo);
+                        changed = true;
+                    }
+
                     return changed
                             ? registrarRepository.save(registrar)
                             : registrar;
@@ -70,6 +72,7 @@ public class RegistrarService {
                     registrar.setName(name);
                     registrar.setSlug(slug);
                     registrar.setUrl(url);
+                    registrar.setLogo(logo);
 
                     return registrarRepository.save(registrar);
                 });

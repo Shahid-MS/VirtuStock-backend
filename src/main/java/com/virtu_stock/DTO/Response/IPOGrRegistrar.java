@@ -1,7 +1,5 @@
 package com.virtu_stock.DTO.Response;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,7 +11,7 @@ public class IPOGrRegistrar {
 
     private String slug;
 
-    @JsonProperty("status_page")
-    private String statusPage;
+    private String website;
 
+    private String logo;
 }
