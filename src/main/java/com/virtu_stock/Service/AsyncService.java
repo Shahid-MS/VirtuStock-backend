@@ -816,9 +816,9 @@ public class AsyncService {
         }
 
         final int batchSize = 10;
-        if (dbIpos.size() > 40) {
-            dbIpos = dbIpos.subList(40, dbIpos.size());
-        }
+        // if (dbIpos.size() > 1) {
+        // dbIpos = dbIpos.subList(0, 1);
+        // }
         int totalIpos = dbIpos.size();
         int totalBatches = (int) Math.ceil((double) totalIpos / batchSize);
 
@@ -844,6 +844,7 @@ public class AsyncService {
                 try {
 
                     IPOGrResponseDTO response = ipoGrService.getIpoBySlug(currentIpo.getIpoGrSlug());
+                    System.out.println(currentIpo.getIpoGrSlug());
 
                     if (response == null || response.getData() == null) {
 
@@ -854,7 +855,6 @@ public class AsyncService {
                                         "Data Not Available"));
 
                     } else {
-
                         updateIpos.add(
                                 Map.of(currentIpo.getId(), response.getData()));
 

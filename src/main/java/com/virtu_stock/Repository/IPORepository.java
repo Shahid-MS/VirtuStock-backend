@@ -65,7 +65,7 @@ public interface IPORepository extends JpaRepository<IPO, UUID>, JpaSpecificatio
             WHERE i.ipoGrSlug IS NOT NULL
               AND i.startDate IS NOT NULL
               AND i.endDate IS NOT NULL
-              AND CURRENT_DATE >= i.listingDate
+              AND CURRENT_DATE <= i.listingDate
             ORDER BY i.startDate DESC
             """)
     List<IPOUpdateProjection> findUpcomingToListingIPOs();
